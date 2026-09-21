@@ -1,0 +1,4168 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light" data-auth="edit"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>放行工作储备 · 管理面板</title>
+
+<!-- ★★★ 新增：存储自适应兜底 ★★★ -->
+<script>
+/* 存储自适应：localStorage 不可用时自动降级为内存对象，保证页面永远能正常渲染内嵌数据 */
+(function () {
+  var TEST_KEY = '__fx_ls_probe__';
+  var usable = false;
+  try {
+    var ls = window.localStorage;
+    if (ls) {
+      ls.setItem(TEST_KEY, '1');
+      ls.removeItem(TEST_KEY);
+      usable = true;
+    }
+  } catch (e) { usable = false; }
+  if (usable) return;
+
+  var mem = Object.create(null);
+  var fallback = {
+    getItem:    function (k) { return k in mem ? mem[k] : null; },
+    setItem:    function (k, v) { mem[k] = String(v); },
+    removeItem: function (k) { delete mem[k]; },
+    clear:      function () { mem = Object.create(null); },
+    key:        function (i) { return Object.keys(mem)[i] || null; }
+  };
+  Object.defineProperty(fallback, 'length', {
+    get: function () { return Object.keys(mem).length; }
+  });
+
+  try {
+    Object.defineProperty(window, 'localStorage', {
+      value: fallback, configurable: true, writable: false
+    });
+  } catch (e1) {
+    try {
+      Object.defineProperty(window, 'localStorage', {
+        get: function () { return fallback; }, configurable: true
+      });
+    } catch (e2) {
+      try { window.localStorage = fallback; } catch (e3) {}
+    }
+  }
+})();
+</script>
+<!-- ★★★ 新增结束 ★★★ -->
+
+<script>
+(function() {
+  try {
+    var k = new URLSearchParams(location.search).get('key');
+    if (k === 'fx2026admin') sessionStorage.setItem('fx_access_auth', '1');
+    var authed = sessionStorage.getItem('fx_access_auth') === '1';
+    document.documentElement.setAttribute('data-auth', authed ? 'edit' : 'readonly');
+  } catch (e) {
+    document.documentElement.setAttribute('data-auth', 'readonly');
+  }
+})();
+</script>
+<style>
+:root {
+  --primary: #1d4ed8; --primary-light: #3b82f6; --primary-dark: #1e40af; --primary-bg: #eff6ff;
+  --bg: #f1f5f9; --surface: #ffffff; --surface-hover: #f8fafc;
+  --border: #e2e8f0; --border-light: #f1f5f9;
+  --text: #0f172a; --text-secondary: #475569; --text-tertiary: #94a3b8;
+  --success: #10b981; --success-bg: #ecfdf5;
+  --warning: #f59e0b; --warning-bg: #fffbeb;
+  --danger: #ef4444; --danger-bg: #fef2f2;
+  --info: #06b6d4; --info-bg: #ecfeff;
+  --purple: #8b5cf6;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+  --radius: 8px; --radius-sm: 6px;
+  --sidebar-width: 240px; --header-height: 60px;
+}
+[data-theme="dark"] {
+  --primary: #3b82f6; --primary-light: #60a5fa; --primary-dark: #2563eb; --primary-bg: #1e3a5f;
+  --bg: #0f172a; --surface: #1e293b; --surface-hover: #334155;
+  --border: #334155; --border-light: #1e293b;
+  --text: #f1f5f9; --text-secondary: #cbd5e1; --text-tertiary: #64748b;
+  --success: #34d399; --success-bg: #064e3b;
+  --warning: #fbbf24; --warning-bg: #451a03;
+  --danger: #f87171; --danger-bg: #450a0a;
+  --info: #22d3ee; --info-bg: #083344;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; overflow: hidden;
+}
+.app { display: flex; height: 100vh; }
+.sidebar {
+  width: var(--sidebar-width); background: var(--surface);
+  border-right: 1px solid var(--border); display: flex; flex-direction: column;
+  flex-shrink: 0; overflow: hidden;
+}
+.sidebar-panels { flex: 1; padding: 12px 8px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+.panel-switch {
+  display: flex; align-items: center; gap: 12px; padding: 12px;
+  border-radius: var(--radius-sm); cursor: pointer; color: var(--text-secondary);
+  border: 1px solid transparent; transition: all 0.15s;
+}
+.panel-switch:hover { background: var(--surface-hover); color: var(--text); }
+.panel-switch.active { background: var(--primary-bg); color: var(--primary); border-color: var(--primary); font-weight: 500; }
+.panel-icon { width: 22px; height: 22px; flex-shrink: 0; }
+.panel-info { flex: 1; min-width: 0; }
+.panel-name { font-size: 14px; font-weight: 500; line-height: 1.2; }
+.panel-desc { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+.panel-switch.active .panel-desc { color: var(--primary); opacity: 0.7; }
+.panel-badge { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 10px; background: rgba(0,0,0,0.08); color: inherit; flex-shrink: 0; }
+.panel-switch.active .panel-badge { background: rgba(255,255,255,0.25); }
+.sidebar-header { height: var(--header-height); display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--border); gap: 10px; }
+.sidebar-logo {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center;
+  color: white; font-weight: 700; font-size: 14px;
+}
+.sidebar-title { font-weight: 600; font-size: 15px; color: var(--text); }
+.sidebar-subtitle { font-size: 11px; color: var(--text-tertiary); }
+.sidebar-footer { padding: 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-tertiary); }
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.header {
+  height: var(--header-height); background: var(--surface);
+  border-bottom: 1px solid var(--border); display: flex; align-items: center;
+  padding: 0 24px; gap: 16px; flex-shrink: 0;
+}
+.header-search { flex: 1; max-width: 440px; position: relative; }
+.header-search input {
+  width: 100%; height: 36px; padding: 0 12px 0 36px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text); font-size: 13px; outline: none; transition: all 0.15s;
+}
+.header-search input:focus { border-color: var(--primary); background: var(--surface); box-shadow: 0 0 0 3px rgba(29,78,216,0.1); }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); width: 16px; height: 16px; }
+.header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.btn {
+  height: 36px; padding: 0 14px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface);
+  color: var(--text-secondary); font-size: 13px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: all 0.15s; white-space: nowrap;
+}
+.btn:hover { background: var(--surface-hover); color: var(--text); border-color: var(--text-tertiary); }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); color: white; }
+.btn-chat {
+  height: 36px; padding: 0 14px; border: 1px solid var(--purple);
+  border-radius: var(--radius-sm); background: linear-gradient(135deg, var(--purple), #a78bfa);
+  color: white; font-size: 13px; font-weight: 500; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: all 0.15s; white-space: nowrap;
+}
+.btn-chat:hover { filter: brightness(1.08); box-shadow: 0 4px 12px rgba(139,92,246,0.35); }
+.btn-text { background: transparent; border: none; color: var(--primary); padding: 0 6px; height: auto; font-size: 13px; cursor: pointer; }
+.btn-text:hover { background: var(--primary-bg); color: var(--primary); }
+.btn-text.danger { color: var(--danger); }
+.btn-text.danger:hover { background: var(--danger-bg); }
+.icon-btn {
+  width: 36px; height: 36px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface);
+  color: var(--text-secondary); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+}
+.icon-btn:hover { background: var(--surface-hover); color: var(--text); }
+.content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+.stats-row { grid-template-columns: 1fr; }
+.stats-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow-sm); }
+.filter-grid { display: grid; grid-template-columns: 60px 1fr; grid-template-rows: auto auto; row-gap: 10px; column-gap: 12px; align-items: center; }
+.filter-label-row { font-size: 14px; font-weight: 600; color: var(--text); text-align: center; height: 38px; display: flex; align-items: center; justify-content: center; }
+.cat-tags, .model-tags, .entity-chips { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.cat-tag, .model-tag {
+  padding: 8px 20px; min-width: 130px; height: 38px; text-align: center;
+  border-radius: 19px; font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text-secondary);
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px; white-space: nowrap; line-height: 1; flex-shrink: 0;
+}
+.cat-tag:hover, .model-tag:hover { opacity: 0.85; transform: translateY(-1px); }
+.cat-tag.active, .model-tag.active { color: white; border-color: transparent; }
+.cat-tag .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.cat-tag[data-cat="all"] .cat-dot { background: #6b7280; }
+.cat-tag[data-cat="material"] .cat-dot { background: #3b82f6; }
+.cat-tag[data-cat="procedure"] .cat-dot { background: #10b981; }
+.cat-tag[data-cat="engineering"] .cat-dot { background: #f59e0b; }
+.cat-tag[data-cat="test_run"] .cat-dot { background: #ef4444; }
+.cat-tag[data-cat="all"].active { background: #6b7280; }
+.cat-tag[data-cat="material"].active { background: #3b82f6; }
+.cat-tag[data-cat="procedure"].active { background: #10b981; }
+.cat-tag[data-cat="engineering"].active { background: #f59e0b; }
+.cat-tag[data-cat="test_run"].active { background: #ef4444; }
+.cat-tag .cat-badge { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 10px; background: rgba(0,0,0,0.08); color: inherit; }
+.cat-tag.active .cat-badge { background: rgba(255,255,255,0.25); }
+.model-tag[data-model="V2500"] { background: #fce7f3; color: #db2777; border-color: #f9a8d4; }
+.model-tag[data-model="V2500"].active { background: #ec4899; color: white; border-color: #ec4899; }
+.model-tag[data-model="PW1100G"] { background: #fef9c3; color: #ca8a04; border-color: #fde047; }
+.model-tag[data-model="PW1100G"].active { background: #eab308; color: white; border-color: #eab308; }
+.model-tag[data-model="RB211"] { background: #f3e8ff; color: #9333ea; border-color: #d8b4fe; }
+.model-tag[data-model="RB211"].active { background: #a855f7; color: white; border-color: #a855f7; }
+.model-tag[data-model="PW4000"] { background: #dbeafe; color: #2563eb; border-color: #93c5fd; }
+.model-tag[data-model="PW4000"].active { background: #3b82f6; color: white; border-color: #3b82f6; }
+.model-tag[data-model="GEnx"] { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+.model-tag[data-model="GEnx"].active { background: #dc2626; color: white; border-color: #dc2626; }
+.model-tag[data-model="all"] { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
+.model-tag[data-model="all"].active { background: #6b7280; color: white; border-color: transparent; }
+[data-theme="dark"] .model-tag[data-model="all"] { background: #1e293b; color: #cbd5e1; border-color: #475569; }
+
+.status-dot {
+  display: inline-block; width: 8px; height: 8px;
+  border-radius: 50%; margin-right: 4px; vertical-align: middle;
+  flex-shrink: 0;
+}
+.status-dot.draft { background: #94a3b8; }
+.status-dot.review { background: #f59e0b; }
+.status-dot.confirmed { background: #10b981; }
+.status-dot.archived { background: #6b7280; }
+.status-label { font-size: 10px; color: var(--text-tertiary); margin-left: 4px; }
+
+.entity-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; margin: 0 2px;
+  border-radius: 10px; font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+  white-space: nowrap; border: 1px solid transparent;
+}
+.entity-chip:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+.entity-chip.sb { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+.entity-chip.ad { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
+.entity-chip.eo { background: #d1fae5; color: #059669; border-color: #a7f3d0; }
+.entity-chip.vrs { background: #ede9fe; color: #7c3aed; border-color: #ddd6fe; }
+.entity-chip.pn { background: #fef3c7; color: #d97706; border-color: #fde68a; }
+.entity-chip.sn { background: #cffafe; color: #0891b2; border-color: #a5f3fc; }
+.entity-chip.more { background: var(--bg); color: var(--text-tertiary); border-color: var(--border); }
+[data-theme="dark"] .entity-chip.sb { background: #1e3a5f; color: #60a5fa; border-color: #1e40af; }
+[data-theme="dark"] .entity-chip.ad { background: #450a0a; color: #f87171; border-color: #7f1d1d; }
+[data-theme="dark"] .entity-chip.eo { background: #064e3b; color: #34d399; border-color: #065f46; }
+[data-theme="dark"] .entity-chip.vrs { background: #2e1065; color: #a78bfa; border-color: #4c1d95; }
+[data-theme="dark"] .entity-chip.pn { background: #451a03; color: #fbbf24; border-color: #78350f; }
+[data-theme="dark"] .entity-chip.sn { background: #083344; color: #22d3ee; border-color: #155e75; }
+.entity-filter-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 14px; font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s;
+  background: var(--primary-bg); color: var(--primary);
+  border: 1px solid var(--primary);
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+}
+.entity-filter-chip:hover { background: var(--primary); color: white; }
+.entity-filter-chip .remove { font-size: 14px; opacity: 0.7; margin-left: 2px; }
+.entity-filter-chip:hover .remove { opacity: 1; }
+
+.related-suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-height: 0; }
+.related-suggestions:empty { display: none; }
+.related-suggestion {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 12px; font-size: 12px;
+  background: var(--bg); border: 1px solid var(--border);
+  cursor: pointer; transition: all 0.15s; max-width: 100%;
+}
+.related-suggestion:hover { background: var(--primary-bg); border-color: var(--primary); color: var(--primary); }
+.related-suggestion.selected { background: var(--primary); color: white; border-color: var(--primary); }
+.related-suggestion .rs-id { font-family: "SF Mono", Monaco, Consolas, monospace; font-size: 10px; opacity: 0.75; flex-shrink: 0; }
+.related-suggestion .rs-kw { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+
+.chat-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; visibility: hidden; transition: opacity 0.2s;
+}
+.chat-modal-overlay.open { opacity: 1; visibility: visible; }
+.chat-modal {
+  background: var(--surface); border-radius: 14px;
+  width: 720px; max-width: 94vw; height: 80vh; max-height: 700px;
+  display: flex; flex-direction: column;
+  box-shadow: 0 24px 72px rgba(0,0,0,0.35);
+  transform: scale(0.96); transition: transform 0.2s;
+  overflow: hidden;
+}
+.chat-modal-overlay.open .chat-modal { transform: scale(1); }
+.chat-header {
+  padding: 16px 22px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+  background: linear-gradient(135deg, var(--purple), #a78bfa);
+  color: white;
+}
+.chat-header-title { font-size: 16px; font-weight: 700; flex: 1; }
+.chat-header-sub { font-size: 12px; opacity: 0.85; }
+.chat-close {
+  width: 30px; height: 30px; border: none; background: rgba(255,255,255,0.2);
+  color: white; font-size: 18px; cursor: pointer; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+}
+.chat-close:hover { background: rgba(255,255,255,0.3); }
+.chat-body {
+  flex: 1; overflow-y: auto; padding: 20px 22px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.chat-msg { display: flex; gap: 10px; max-width: 100%; }
+.chat-msg.user { justify-content: flex-end; }
+.chat-avatar {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700;
+}
+.chat-msg.system .chat-avatar { background: var(--purple); color: white; }
+.chat-msg.user .chat-avatar { background: var(--primary); color: white; }
+.chat-bubble {
+  padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.7;
+  max-width: calc(100% - 50px); word-break: break-word;
+}
+.chat-msg.system .chat-bubble { background: var(--bg); color: var(--text); border-top-left-radius: 4px; }
+.chat-msg.user .chat-bubble { background: var(--primary); color: white; border-top-right-radius: 4px; }
+.chat-result-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.chat-result-item {
+  padding: 10px 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  cursor: pointer; transition: all 0.15s;
+}
+.chat-result-item:hover { border-color: var(--primary); background: var(--primary-bg); }
+.chat-result-head {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+}
+.chat-result-id {
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+  font-size: 11px; font-weight: 600; color: var(--primary);
+}
+.chat-result-kw { font-size: 12px; font-weight: 600; color: var(--text); }
+.chat-result-conclusion {
+  font-size: 12px; color: var(--text-secondary); line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.chat-result-actions {
+  display: flex; gap: 6px; margin-top: 8px;
+}
+.chat-quick {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  padding: 0 22px 12px;
+}
+.chat-quick-btn {
+  padding: 6px 12px; border-radius: 14px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-secondary); font-size: 12px; cursor: pointer;
+  transition: all 0.15s;
+}
+.chat-quick-btn:hover { background: var(--primary-bg); border-color: var(--primary); color: var(--primary); }
+.chat-input-bar {
+  padding: 12px 22px 18px; border-top: 1px solid var(--border);
+  display: flex; gap: 8px;
+}
+.chat-input-bar input {
+  flex: 1; height: 40px; padding: 0 14px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text); font-size: 14px;
+  outline: none; transition: all 0.15s;
+}
+.chat-input-bar input:focus { border-color: var(--primary); background: var(--surface); box-shadow: 0 0 0 3px rgba(29,78,216,0.1); }
+.chat-input-bar button {
+  height: 40px; padding: 0 22px;
+}
+
+.table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; }
+.table-wrapper { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead { background: var(--bg); }
+th {
+  padding: 12px 14px; text-align: left; font-weight: 600; color: var(--text-secondary);
+  font-size: 12px; border-bottom: 1px solid var(--border);
+  white-space: nowrap; user-select: none;
+}
+th[data-sort-field] { cursor: pointer; }
+th[data-sort-field]:hover { color: var(--text); }
+th[data-sort-field]::after {
+  content: ''; display: inline-block; width: 0; height: 0;
+  margin-left: 6px; vertical-align: middle;
+  border-left: 4px solid transparent; border-right: 4px solid transparent;
+  opacity: 0.18; transition: opacity 0.15s;
+}
+th[data-sort-field].sort-asc::after { border-bottom: 5px solid currentColor; opacity: 1; }
+th[data-sort-field].sort-desc::after { border-top: 5px solid currentColor; opacity: 1; }
+td { padding: 12px 14px; border-bottom: 1px solid var(--border-light); color: var(--text); vertical-align: top; }
+tbody tr { transition: background 0.15s; cursor: pointer; }
+tbody tr:hover { background: var(--surface-hover); }
+tbody tr:last-child td { border-bottom: none; }
+.col-id { width: 100px; font-family: "SF Mono", Monaco, Consolas, monospace; font-size: 12px; color: var(--text-tertiary); }
+.col-cat { width: 160px; }
+.col-model { width: 90px; }
+.col-content { min-width: 200px; }
+.col-file { width: 120px; min-width: 100px; }
+.col-keyword { width: 120px; font-weight: 500; }
+.col-question { min-width: 240px; }
+.col-conclusion { min-width: 200px; }
+.col-action { width: 160px; white-space: nowrap; }
+.cell-cat { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.cell-cat.material { background: #dbeafe; color: #1d4ed8; }
+.cell-cat.procedure { background: #d1fae5; color: #059669; }
+.cell-cat.engineering { background: #fef3c7; color: #d97706; }
+.cell-cat.test_run { background: #fee2e2; color: #dc2626; }
+[data-theme="dark"] .cell-cat.material { background: #1e3a5f; color: #60a5fa; }
+[data-theme="dark"] .cell-cat.procedure { background: #064e3b; color: #34d399; }
+[data-theme="dark"] .cell-cat.engineering { background: #451a03; color: #fbbf24; }
+[data-theme="dark"] .cell-cat.test_run { background: #450a0a; color: #f87171; }
+.model-badge {
+  display: inline-block; padding: 2px 8px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 4px; font-size: 11px;
+  color: var(--text-secondary); font-family: "SF Mono", Monaco, Consolas, monospace;
+}
+.text-ellipsis {
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+  color: var(--text-secondary); font-size: 12px; line-height: 1.5;
+}
+.action-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.pagination { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-top: 1px solid var(--border); background: var(--surface); }
+.pagination-info { font-size: 12px; color: var(--text-secondary); }
+.pagination-controls { display: flex; align-items: center; gap: 4px; }
+.page-btn {
+  min-width: 32px; height: 32px; padding: 0 8px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text-secondary);
+  font-size: 12px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+}
+.page-btn:hover { background: var(--surface-hover); color: var(--text); }
+.page-btn.active { background: var(--primary); border-color: var(--primary); color: white; }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.page-size-select {
+  height: 32px; padding: 0 8px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface);
+  color: var(--text-secondary); font-size: 12px; cursor: pointer; outline: none;
+}
+
+/* ================= 行悬浮详情气泡 ================= */
+.row-tooltip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 800;
+  width: 560px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.08);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.16s ease;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text);
+  overscroll-behavior: contain;
+}
+[data-theme="dark"] .row-tooltip {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+.row-tooltip.show { opacity: 1; visibility: visible; }
+.row-tooltip .tip-bar { height: 4px; background: #6b7280; flex-shrink: 0; }
+.row-tooltip[data-cat="material"] .tip-bar { background: #3b82f6; }
+.row-tooltip[data-cat="procedure"] .tip-bar { background: #10b981; }
+.row-tooltip[data-cat="engineering"] .tip-bar { background: #f59e0b; }
+.row-tooltip[data-cat="test_run"] .tip-bar { background: #ef4444; }
+.row-tooltip[data-kbcat="ad"] .tip-bar { background: #3b82f6; }
+.row-tooltip[data-kbcat="regulation"] .tip-bar { background: #10b981; }
+.row-tooltip[data-kbcat="training"] .tip-bar { background: #f59e0b; }
+.row-tooltip[data-kbcat="reference"] .tip-bar { background: #ef4444; }
+.row-tooltip[data-kbcat="safety"] .tip-bar { background: #8b5cf6; }
+.row-tooltip .tip-header {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 16px 8px;
+}
+.row-tooltip .tip-title {
+  font-size: 14px; font-weight: 700; color: var(--text);
+  flex: 1; min-width: 0; word-break: break-word; white-space: pre-wrap;
+}
+.row-tooltip .tip-id {
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+  font-size: 11px; color: var(--text-tertiary); flex-shrink: 0; padding-top: 3px;
+}
+.row-tooltip .tip-meta {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  padding: 0 16px 10px;
+  border-bottom: 1px dashed var(--border);
+  margin-bottom: 10px;
+  font-size: 11px; color: var(--text-tertiary);
+}
+.row-tooltip .tip-meta .meta-dot {
+  display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--text-tertiary); margin-right: 5px; vertical-align: middle;
+}
+.row-tooltip .tip-body { padding: 0 16px 14px; }
+.row-tooltip .tip-section { margin-bottom: 10px; }
+.row-tooltip .tip-section:last-child { margin-bottom: 0; }
+.row-tooltip .tip-label {
+  font-size: 11px; font-weight: 700; color: var(--primary);
+  margin-bottom: 3px; letter-spacing: 0.3px;
+}
+.row-tooltip .tip-value {
+  font-size: 12.5px; color: var(--text-secondary);
+  line-height: 1.7; white-space: pre-wrap; word-break: break-word;
+}
+@media (max-width: 640px) {
+  .row-tooltip { width: calc(100vw - 24px); }
+}
+@media (hover: none) {
+  .row-tooltip { display: none !important; }
+}
+
+.drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; opacity: 0; visibility: hidden; transition: all 0.3s; }
+.drawer-overlay.open { opacity: 1; visibility: visible; }
+.drawer {
+  position: fixed; top: 0; right: 0; width: 640px; max-width: 94vw; height: 100vh;
+  background: var(--surface); z-index: 101;
+  transform: translateX(100%); transition: transform 0.3s ease;
+  display: flex; flex-direction: column; box-shadow: var(--shadow-lg);
+}
+.drawer.open { transform: translateX(0); }
+.drawer-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.drawer-title { font-size: 16px; font-weight: 600; color: var(--text); }
+.drawer-close { width: 32px; height: 32px; border: none; background: transparent; color: var(--text-tertiary); cursor: pointer; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.drawer-close:hover { background: var(--surface-hover); color: var(--text); }
+.drawer-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+.drawer-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0; }
+.detail-section { margin-bottom: 20px; }
+.detail-label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.detail-value { font-size: 13px; color: var(--text); line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+.detail-meta { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.meta-item { display: flex; flex-direction: column; gap: 4px; }
+.meta-label { font-size: 11px; color: var(--text-tertiary); }
+.meta-value { font-size: 13px; font-weight: 500; color: var(--text); }
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; }
+.form-label .required { color: var(--danger); margin-left: 2px; }
+.form-input, .form-textarea, .form-select {
+  width: 100%; padding: 8px 12px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface); color: var(--text);
+  font-size: 13px; font-family: inherit; outline: none; transition: all 0.15s;
+}
+.form-input:focus, .form-textarea:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(29,78,216,0.1); }
+.form-textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-hint { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
+
+.related-list { display: flex; flex-direction: column; gap: 8px; }
+.related-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  cursor: pointer; transition: all 0.15s;
+}
+.related-item:hover { background: var(--primary-bg); border-color: var(--primary); transform: translateX(2px); }
+.related-id { font-family: "SF Mono", Monaco, Consolas, monospace; font-size: 11px; color: var(--primary); font-weight: 600; flex-shrink: 0; padding-top: 2px; }
+.related-content { flex: 1; min-width: 0; }
+.related-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+.related-conclusion { font-size: 12px; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.5; }
+.related-badge { font-size: 10px; padding: 1px 6px; border-radius: 8px; background: var(--primary-bg); color: var(--primary); flex-shrink: 0; margin-top: 2px; }
+.related-empty { font-size: 12px; color: var(--text-tertiary); padding: 12px; text-align: center; background: var(--bg); border-radius: var(--radius-sm); }
+
+.toast-container { position: fixed; top: 20px; right: 20px; z-index: 900; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  padding: 12px 18px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow-lg); font-size: 13px; color: var(--text);
+  display: flex; align-items: center; gap: 10px;
+  animation: slideIn 0.3s ease; min-width: 240px;
+}
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.toast.success { border-left: 3px solid var(--success); }
+.toast.error { border-left: 3px solid var(--danger); }
+.toast.info { border-left: 3px solid var(--info); }
+.toast.warning { border-left: 3px solid var(--warning); }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 150; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.2s; }
+.modal-overlay.open { opacity: 1; visibility: visible; }
+.modal { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-lg); width: 420px; max-width: 90vw; transform: scale(0.95); transition: transform 0.2s; }
+.modal-overlay.open .modal { transform: scale(1); }
+.modal-header { padding: 18px 20px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 15px; }
+.modal-body { padding: 20px; font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+.modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--text-tertiary); border-radius: 3px; opacity: 0.3; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+@media (max-width: 1200px) { .stats-row { display: none; } }
+@media (max-width: 768px) { .sidebar { display: none; } .form-row { grid-template-columns: 1fr; } }
+.panel-view { display: none; height: 100%; flex-direction: column; }
+.panel-view.active { display: flex; }
+#panel-knowledge .content,
+#panel-experience .content,
+#panel-trash .content {
+  display: flex; flex-direction: column; overflow: hidden;
+  padding: 12px 24px 16px 24px; flex: 1; min-height: 0;
+}
+#panel-knowledge .stats-row, #panel-experience .stats-row { flex-shrink: 0; margin-bottom: 0; margin-top: 0; }
+#panel-knowledge .table-card, #panel-experience .table-card, #panel-trash .table-card {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; margin-top: 0;
+}
+#panel-knowledge .table-wrapper, #panel-experience .table-wrapper, #panel-trash .table-wrapper {
+  flex: 1; overflow-y: auto; overflow-x: auto; min-height: 0;
+}
+#panel-knowledge .pagination, #panel-experience .pagination { flex-shrink: 0; }
+.cat-tag[data-cat="all"] { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
+.cat-tag[data-cat="material"] { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.cat-tag[data-cat="procedure"] { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
+.cat-tag[data-cat="engineering"] { background: #fffbeb; color: #d97706; border-color: #fde68a; }
+.cat-tag[data-cat="test_run"] { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+.cat-tag[data-kbcat="all"] { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
+.cat-tag[data-kbcat="ad"] { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.cat-tag[data-kbcat="regulation"] { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
+.cat-tag[data-kbcat="training"] { background: #fffbeb; color: #d97706; border-color: #fde68a; }
+.cat-tag[data-kbcat="reference"] { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+.cat-tag[data-kbcat="safety"] { background: #f5f3ff; color: #7c3aed; border-color: #ddd6fe; }
+.cat-tag[data-kbcat="all"] .cat-dot { background: #6b7280; }
+.cat-tag[data-kbcat="ad"] .cat-dot { background: #3b82f6; }
+.cat-tag[data-kbcat="regulation"] .cat-dot { background: #10b981; }
+.cat-tag[data-kbcat="training"] .cat-dot { background: #f59e0b; }
+.cat-tag[data-kbcat="reference"] .cat-dot { background: #ef4444; }
+.cat-tag[data-kbcat="safety"] .cat-dot { background: #8b5cf6; }
+.cat-tag[data-kbcat="all"].active { background: #6b7280; }
+.cat-tag[data-kbcat="ad"].active { background: #3b82f6; }
+.cat-tag[data-kbcat="regulation"].active { background: #10b981; }
+.cat-tag[data-kbcat="training"].active { background: #f59e0b; }
+.cat-tag[data-kbcat="reference"].active { background: #ef4444; }
+.cat-tag[data-kbcat="safety"].active { background: #8b5cf6; }
+[data-theme="dark"] .cat-tag[data-cat="all"], [data-theme="dark"] .cat-tag[data-kbcat="all"] { background: #1e293b; color: #cbd5e1; border-color: #475569; }
+[data-theme="dark"] .cat-tag[data-cat="material"], [data-theme="dark"] .cat-tag[data-kbcat="ad"] { background: #1e3a5f; color: #60a5fa; border-color: #1e40af; }
+[data-theme="dark"] .cat-tag[data-cat="procedure"], [data-theme="dark"] .cat-tag[data-kbcat="regulation"] { background: #064e3b; color: #34d399; border-color: #065f46; }
+[data-theme="dark"] .cat-tag[data-cat="engineering"], [data-theme="dark"] .cat-tag[data-kbcat="training"] { background: #451a03; color: #fbbf24; border-color: #78350f; }
+[data-theme="dark"] .cat-tag[data-cat="test_run"], [data-theme="dark"] .cat-tag[data-kbcat="reference"] { background: #450a0a; color: #f87171; border-color: #7f1d1d; }
+[data-theme="dark"] .cat-tag[data-kbcat="safety"] { background: #2e1065; color: #a78bfa; border-color: #4c1d95; }
+.cat-tag.active { color: #ffffff !important; }
+.cell-cat.kb-ad { background: #dbeafe; color: #1d4ed8; }
+.cell-cat.kb-regulation { background: #d1fae5; color: #059669; }
+.cell-cat.kb-training { background: #fef3c7; color: #d97706; }
+.cell-cat.kb-reference { background: #fee2e2; color: #dc2626; }
+.cell-cat.kb-safety { background: #ede9fe; color: #7c3aed; }
+[data-theme="dark"] .cell-cat.kb-ad { background: #1e3a5f; color: #60a5fa; }
+[data-theme="dark"] .cell-cat.kb-regulation { background: #064e3b; color: #34d399; }
+[data-theme="dark"] .cell-cat.kb-training { background: #451a03; color: #fbbf24; }
+[data-theme="dark"] .cell-cat.kb-reference { background: #450a0a; color: #f87171; }
+[data-theme="dark"] .cell-cat.kb-safety { background: #2e1065; color: #a78bfa; }
+
+html[data-auth="readonly"] .sidebar-footer { display: none !important; }
+html[data-auth="readonly"] .panel-switch[data-panel="trash"] { display: none !important; }
+html[data-auth="readonly"] [onclick*="openAddDrawer"],
+html[data-auth="readonly"] [onclick*="openAddKB"],
+html[data-auth="readonly"] [onclick*="showImportModal"],
+html[data-auth="readonly"] [onclick*="editRecord"],
+html[data-auth="readonly"] [onclick*="editKBRecord"],
+html[data-auth="readonly"] [onclick*="deleteKBRecord"],
+html[data-auth="readonly"] [onclick*="deleteRecord"],
+html[data-auth="readonly"] [onclick*="confirmDelete"],
+html[data-auth="readonly"] [onclick*="exportFullHTML"],
+html[data-auth="readonly"] [onclick*="restoreRecord"],
+html[data-auth="readonly"] [onclick*="permanentDelete"],
+html[data-auth="readonly"] [onclick*="clearTrash"] { display: none !important; }
+
+.mode-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 14px; border-radius: 16px; font-size: 12px; font-weight: 600;
+  cursor: pointer; border: 1px solid; transition: all 0.2s; user-select: none;
+}
+.mode-toggle.readonly { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.mode-toggle.readonly:hover { background: #fde68a; }
+.mode-toggle.edit { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.mode-toggle.edit:hover { background: #d1fae5; }
+[data-theme="dark"] .mode-toggle.readonly { background: #451a03; color: #fbbf24; border-color: #78350f; }
+[data-theme="dark"] .mode-toggle.edit { background: #064e3b; color: #34d399; border-color: #065f46; }
+.access-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center; }
+.access-modal { background: var(--surface); border-radius: 12px; padding: 28px; width: 360px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.access-modal h3 { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.access-modal p { font-size: 13px; color: var(--text-secondary); margin-bottom: 18px; line-height: 1.5; }
+.access-modal input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--bg); color: var(--text); margin-bottom: 16px; outline: none; }
+.access-modal input:focus { border-color: var(--primary); }
+.access-modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+.access-modal-btns button { padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); }
+.access-modal-btns button.primary { background: var(--primary); color: white; border-color: var(--primary); }
+.access-modal-btns button:hover { opacity: 0.9; }
+.access-error { color: #dc2626; font-size: 12px; margin-bottom: 12px; min-height: 16px; }
+.smart-judgment {
+  background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+  border: 1px solid #bfdbfe; border-radius: 10px;
+  padding: 16px 20px; margin-bottom: 16px; animation: slideDown 0.3s ease;
+}
+[data-theme="dark"] .smart-judgment { background: linear-gradient(135deg, #1e3a5f 0%, #064e3b 100%); border-color: #1e40af; }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+.smart-judgment-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.smart-judgment-title { font-size: 14px; font-weight: 700; color: #1e40af; display: flex; align-items: center; gap: 6px; }
+[data-theme="dark"] .smart-judgment-title { color: #60a5fa; }
+.smart-judgment-query { font-size: 12px; color: #64748b; background: rgba(255,255,255,0.6); padding: 2px 8px; border-radius: 10px; }
+[data-theme="dark"] .smart-judgment-query { background: rgba(0,0,0,0.2); color: #94a3b8; }
+.smart-judgment-body { font-size: 13px; color: #1e293b; line-height: 1.7; }
+[data-theme="dark"] .smart-judgment-body { color: #e2e8f0; }
+.smart-judgment-conclusion { background: rgba(255,255,255,0.5); border-left: 3px solid #3b82f6; padding: 10px 14px; border-radius: 0 6px 6px 0; margin-bottom: 10px; }
+[data-theme="dark"] .smart-judgment-conclusion { background: rgba(0,0,0,0.15); border-left-color: #60a5fa; }
+.smart-judgment-sources { font-size: 12px; color: #64748b; margin-top: 8px; }
+.smart-judgment-disclaimer { font-size: 11px; color: #94a3b8; margin-top: 8px; font-style: italic; }
+.highlight-keyword { background: #fef08a; color: #713f12; padding: 0 2px; border-radius: 2px; font-weight: 600; }
+[data-theme="dark"] .highlight-keyword { background: #854d0e; color: #fef08a; }
+
+.conflict-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: opacity 0.2s; }
+.conflict-modal-overlay.open { opacity: 1; visibility: visible; }
+.conflict-modal { background: var(--surface); border-radius: 12px; width: 560px; max-width: 92vw; max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.3); transform: scale(0.96); transition: transform 0.2s; }
+.conflict-modal-overlay.open .conflict-modal { transform: scale(1); }
+.conflict-header { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.conflict-icon { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; background: var(--warning-bg); color: var(--warning); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; }
+.conflict-title { font-size: 15px; font-weight: 600; }
+.conflict-subtitle { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+.conflict-body { padding: 18px 22px; overflow-y: auto; flex: 1; }
+.conflict-item { padding: 12px 14px; background: var(--bg); border-radius: var(--radius-sm); margin-bottom: 10px; border-left: 3px solid var(--warning); }
+.conflict-item-id { font-family: "SF Mono", Monaco, Consolas, monospace; font-size: 11px; color: var(--text-tertiary); margin-bottom: 4px; }
+.conflict-item-conclusion { font-size: 13px; color: var(--text); line-height: 1.6; }
+.conflict-my { padding: 12px 14px; background: var(--primary-bg); border-radius: var(--radius-sm); margin-bottom: 14px; border-left: 3px solid var(--primary); }
+.conflict-my-label { font-size: 11px; color: var(--primary); font-weight: 600; margin-bottom: 4px; }
+.conflict-my-text { font-size: 13px; color: var(--text); line-height: 1.6; }
+.conflict-footer { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+</style>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="放行工作储备">
+  <meta name="theme-color" content="#1d4ed8">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231d4ed8'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='Arial'>放</text></svg>">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">放</div>
+      <div>
+        <div class="sidebar-title">放行</div>
+        <div class="sidebar-subtitle">管理面板 v5.4</div>
+      </div>
+    </div>
+    <nav class="sidebar-panels">
+      <div class="panel-switch active" data-panel="experience" onclick="switchPanel('experience')">
+        <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        <div class="panel-info">
+          <div class="panel-name">经验库</div>
+          <div class="panel-desc">案例检索与复盘</div>
+        </div>
+      </div>
+      <div class="panel-switch" data-panel="knowledge" onclick="switchPanel('knowledge')">
+        <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+        <div class="panel-info">
+          <div class="panel-name">知识库</div>
+          <div class="panel-desc">资料沉淀与积累</div>
+        </div>
+      </div>
+      <div class="panel-switch" data-panel="trash" onclick="switchPanel('trash')">
+        <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        <div class="panel-info">
+          <div class="panel-name">回收站</div>
+          <div class="panel-desc">已删除 · 30 天保留</div>
+        </div>
+        <span class="panel-badge" id="trash-badge">0</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div>经验：<span id="footer-exp-total">46</span> · 知识：<span id="footer-kb-total">19</span></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="panel-view active" id="panel-experience">
+      <header class="header">
+        <div class="header-search">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+          <input type="text" id="searchInput" placeholder="支持自然语言，如：V2500 NIS 问题 (Ctrl+K)" oninput="handleSearch(this.value)">
+        </div>
+        <div class="header-actions">
+          <button class="btn-chat" onclick="openChatModal('experience')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            智能问答
+          </button>
+          <span class="mode-toggle edit" id="modeToggle" onclick="toggleAccessMode()">返回查看</span>
+          <button class="btn btn-primary" onclick="exportFullHTML()" title="导出完整HTML">存储</button>
+          <button class="btn" onclick="showImportModal()">导入</button>
+          <button class="btn" onclick="exportData()">导出</button>
+          <button class="btn btn-primary" onclick="openAddDrawer()">新增条目</button>
+          <button class="icon-btn" onclick="toggleTheme()" title="切换主题">
+            <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+          </button>
+        </div>
+      </header>
+      <div class="content">
+        <div id="smartJudgmentExp" style="display:none;"></div>
+        <div id="entityFilterBar" style="display:none;margin-bottom:12px;"></div>
+        <div class="stats-row">
+          <div class="stats-card">
+            <div class="filter-grid">
+              <div class="filter-label-row">类别</div>
+              <div class="cat-tags" id="catTags">
+                <span class="cat-tag active" data-cat="all" onclick="filterByCategory('all')"><span class="cat-dot"></span>全部<span class="cat-badge">46</span></span>
+                <span class="cat-tag" data-cat="material" onclick="filterByCategory('material')"><span class="cat-dot"></span>器材文审类<span class="cat-badge">21</span></span>
+                <span class="cat-tag" data-cat="procedure" onclick="filterByCategory('procedure')"><span class="cat-dot"></span>流程/程序类<span class="cat-badge">9</span></span>
+                <span class="cat-tag" data-cat="engineering" onclick="filterByCategory('engineering')"><span class="cat-dot"></span>工程类<span class="cat-badge">10</span></span>
+                <span class="cat-tag" data-cat="test_run" onclick="filterByCategory('test_run')"><span class="cat-dot"></span>试车/出检类<span class="cat-badge">6</span></span>
+              </div>
+              <div class="filter-label-row">机型</div>
+              <div class="model-tags" id="modelTags"><span class="model-tag active" data-model="all" onclick="filterByModel('all')">全部</span><span class="model-tag" data-model="V2500" onclick="filterByModel('V2500')">V2500</span><span class="model-tag" data-model="PW1100G" onclick="filterByModel('PW1100G')">PW1100G</span><span class="model-tag" data-model="RB211" onclick="filterByModel('RB211')">RB211</span><span class="model-tag" data-model="PW4000" onclick="filterByModel('PW4000')">PW4000</span><span class="model-tag" data-model="GEnx" onclick="filterByModel('GEnx')">GEnx</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="table-card">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th class="col-id sort-asc" data-sort-field="id" onclick="sortBy('id')">编号</th>
+                  <th class="col-cat" data-sort-field="category" onclick="sortBy('category')">类别</th>
+                  <th class="col-model" data-sort-field="model" onclick="sortBy('model')">机型</th>
+                  <th class="col-file" data-sort-field="file" onclick="sortBy('file')">文件</th>
+                  <th class="col-keyword" data-sort-field="keyword" onclick="sortBy('keyword')">关键词</th>
+                  <th class="col-question">问题</th>
+                  <th class="col-conclusion">结论摘要</th>
+                  <th class="col-action">操作</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+          <div class="pagination">
+            <div class="pagination-info" id="paginationInfo">显示 1-10 条，共 46 条</div>
+            <div class="pagination-controls">
+              <select class="page-size-select" id="pageSize" onchange="changePageSize()">
+                <option value="10">10 条/页</option>
+                <option value="20">20 条/页</option>
+                <option value="50">50 条/页</option>
+              </select>
+              <button class="page-btn" onclick="prevPage()" id="prevBtn" disabled="">‹</button>
+              <div id="pageNumbers" style="display:flex;gap:4px;"></div>
+              <button class="page-btn" onclick="nextPage()" id="nextBtn">›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-view" id="panel-knowledge">
+      <header class="header">
+        <div class="header-search">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+          <input type="text" id="kbSearchInput" placeholder="搜索知识标题、内容、来源 (Ctrl+K)..." oninput="handleKBSearch(this.value)">
+        </div>
+        <div class="header-actions">
+          <button class="btn-chat" onclick="openChatModal('knowledge')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            智能问答
+          </button>
+          <span class="mode-toggle edit" id="modeToggleKB" onclick="toggleAccessMode()">返回查看</span>
+          <button class="btn btn-primary" onclick="exportFullHTML()">存储</button>
+          <button class="btn" onclick="showImportModal()">导入</button>
+          <button class="btn" onclick="exportData()">导出</button>
+          <button class="btn btn-primary" onclick="openAddKB()">新增知识</button>
+          <button class="icon-btn" onclick="toggleTheme()" title="切换主题">
+            <svg id="themeIconKB" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+          </button>
+        </div>
+      </header>
+      <div class="content">
+        <div id="smartJudgmentKB" style="display:none;"></div>
+        <div class="stats-row">
+          <div class="stats-card">
+            <div class="filter-grid">
+              <div class="filter-label-row">类别</div>
+              <div class="cat-tags" id="kbCatTags">
+                <span class="cat-tag" data-kbcat="all" onclick="filterKBByCategory('all')"><span class="cat-dot"></span>全部<span class="cat-badge" id="kb-badge-all">19</span></span>
+                <span class="cat-tag" data-kbcat="ad" onclick="filterKBByCategory('ad')"><span class="cat-dot"></span>AD<span class="cat-badge" id="kb-badge-ad">0</span></span>
+                <span class="cat-tag" data-kbcat="regulation" onclick="filterKBByCategory('regulation')"><span class="cat-dot"></span>法规/程序/流程<span class="cat-badge" id="kb-badge-regulation">2</span></span>
+                <span class="cat-tag" data-kbcat="training" onclick="filterKBByCategory('training')"><span class="cat-dot"></span>审核<span class="cat-badge" id="kb-badge-training">0</span></span>
+                <span class="cat-tag active" data-kbcat="reference" onclick="filterKBByCategory('reference')"><span class="cat-dot"></span>工程构型<span class="cat-badge" id="kb-badge-reference">16</span></span>
+                <span class="cat-tag" data-kbcat="safety" onclick="filterKBByCategory('safety')"><span class="cat-dot"></span>质量安全<span class="cat-badge" id="kb-badge-safety">1</span></span>
+              </div>
+              <div class="filter-label-row">机型</div>
+              <div class="model-tags" id="kbModelTags"></div>
+            </div>
+          </div>
+        </div>
+        <div class="table-card">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th class="col-id sort-asc" data-sort-field="id" onclick="sortKBBy('id')">编号</th>
+                  <th class="col-cat" data-sort-field="category" onclick="sortKBBy('category')">类别</th>
+                  <th class="col-model" data-sort-field="model" onclick="sortKBBy('model')">机型</th>
+                  <th class="col-keyword" data-sort-field="title" onclick="sortKBBy('title')">标题</th>
+                  <th class="col-question">摘要</th>
+                  <th class="col-content">内容</th>
+                  <th class="col-file">来源</th>
+                  <th class="col-action">操作</th>
+                </tr>
+              </thead>
+              <tbody id="kbTableBody"></tbody>
+            </table>
+          </div>
+          <div class="pagination">
+            <div class="pagination-info" id="kbPaginationInfo">显示 1-10 条，共 19 条</div>
+            <div class="pagination-controls">
+              <select class="page-size-select" id="kbPageSize" onchange="changeKBPageSize()">
+                <option value="10">10 条/页</option>
+                <option value="20">20 条/页</option>
+                <option value="50">50 条/页</option>
+              </select>
+              <button class="page-btn" onclick="prevKBPage()" id="kbPrevBtn" disabled="">‹</button>
+              <div id="kbPageNumbers" style="display:flex;gap:4px;"></div>
+              <button class="page-btn" onclick="nextKBPage()" id="kbNextBtn">›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-view" id="panel-trash">
+      <header class="header">
+        <div style="font-size: 16px; font-weight: 600; color: var(--text);">回收站</div>
+        <div style="font-size: 12px; color: var(--text-tertiary); margin-left: 12px;">已删除条目保留 30 天，超期自动清理</div>
+        <div class="header-actions">
+          <button class="btn" onclick="clearTrash()" style="color: var(--danger); border-color: var(--danger);">清空回收站</button>
+          <button class="icon-btn" onclick="toggleTheme()" title="切换主题">
+            <svg id="themeIconTrash" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+          </button>
+        </div>
+      </header>
+      <div class="content">
+        <div class="table-card">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th class="col-id">编号</th>
+                  <th class="col-cat">类别</th>
+                  <th class="col-model">机型</th>
+                  <th class="col-keyword">关键词</th>
+                  <th class="col-conclusion">结论摘要</th>
+                  <th style="width: 160px;">删除时间</th>
+                  <th class="col-action">操作</th>
+                </tr>
+              </thead>
+              <tbody id="trashTableBody"><tr><td colspan="7" style="text-align:center;padding:60px;color:var(--text-tertiary);">回收站为空</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 悬浮详情气泡（内容由 JS 动态生成） -->
+<div class="row-tooltip" id="rowTooltip" data-cat="material"></div>
+
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div class="drawer-title" id="drawerTitle">新增条目</div>
+    <button class="drawer-close" onclick="closeDrawer()">×</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+  <div class="drawer-footer" id="drawerFooter"><button class="btn" onclick="closeDrawer()">取消</button><button class="btn btn-primary" onclick="saveAdd()">保存新增</button></div>
+</div>
+
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <div class="modal-header">导入数据</div>
+    <div class="modal-body">
+      <p style="margin-bottom:12px;">支持导入导出的完整 JSON 文件，或纯数组格式。</p>
+      <input type="file" id="importFile" accept=".json" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+      <p style="margin-top:12px;font-size:12px;color:var(--text-tertiary);">或粘贴 JSON 文本：</p>
+      <textarea id="importText" class="form-textarea" placeholder="粘贴 JSON..." style="margin-top:8px;min-height:100px;"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeImportModal()">取消</button>
+      <button class="btn btn-primary" onclick="doImport()">确认导入</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <div class="modal-header" id="deleteModalHeader">确认删除</div>
+    <div class="modal-body" id="deleteModalMessage">确定要删除这条记录吗？</div>
+    <div class="modal-footer" id="deleteModalFooter">
+      <button class="btn" onclick="closeDeleteModal()">取消</button>
+      <button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" onclick="confirmDelete()">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<div class="conflict-modal-overlay" id="conflictModal" onclick="if(event.target===this)cancelConflictSave()">
+  <div class="conflict-modal">
+    <div class="conflict-header">
+      <div class="conflict-icon">⚠</div>
+      <div style="flex:1;">
+        <div class="conflict-title">检测到结论冲突</div>
+        <div class="conflict-subtitle" id="conflictSubtitle"></div>
+      </div>
+    </div>
+    <div class="conflict-body" id="conflictBody"></div>
+    <div class="conflict-footer">
+      <button class="btn" onclick="cancelConflictSave()">返回修改</button>
+      <button class="btn btn-primary" onclick="confirmConflictSave()">我已知悉，仍然保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="chat-modal-overlay" id="chatModal" onclick="if(event.target===this)closeChatModal()">
+  <div class="chat-modal">
+    <div class="chat-header">
+      <div style="flex:1;">
+        <div class="chat-header-title">💬 智能问答</div>
+        <div class="chat-header-sub" id="chatHeaderSub">描述你的问题，系统会检索历史案例和知识点</div>
+      </div>
+      <button class="chat-close" onclick="closeChatModal()">×</button>
+    </div>
+    <div class="chat-body" id="chatBody"></div>
+    <div class="chat-quick" id="chatQuick"></div>
+    <div class="chat-input-bar">
+      <input type="text" id="chatInput" placeholder="描述你的问题…" onkeydown="if(event.key==='Enter')submitChatQuery()">
+      <button class="btn btn-primary" onclick="submitChatQuery()">发送</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const INITIAL_DATA = [/*@@EXP_START@@*/
+  {
+    "id": "EXP-001",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "ALL",
+    "file": "合格证",
+    "keyword": "合格证状态",
+    "question": "3局方合格证状态不统一，三证合一的要求无法被满足",
+    "conclusion": "当前的评估结果为可接受，但维修报告及CAAC放行证书“备注”栏中需对“改装”工作的执行情况进行说明并保留，确保维修工作能够清晰记录和追溯。",
+    "background": "V18405 PN G4000VSVA04 SN AAG18-843 3局方合格证状态不统一  修理厂认为：根据CCA145R4改版以及相关AC-145-FS-001 R1关于国内维修单位申请和批准指南的要求，取消了国内维修单位部件维修的维修类别”改装“，同时CAAC要求145维修单位对现有的维修能力清单也要进行相应的变更。对于该放行证书的执行要求也再次和局方进行了确认，按照最新的规章以及递交的变更流程进行实施。但是公司对于维修报告及放行证书“备注”栏中对于“改装”工作的执行情况说明将会保留，确保维修工作能够清晰记录和追溯。\n同时基于公司对于EASA/FAA 关于放行证书的符合性要求，我们必须对完成改装的LRU放行 “Modified”。因此三证合一的要求无法被满足，因为公司必须符合各个局方的规章要求。",
+    "basis": "CCA 145 R4，AC-145-FS-001 R1，\nAC-145-4",
+    "keypoint": "我们认为局方只是在能力批准方面取消了",
+    "remark": "应建议局方恢复关于改装的内容，以便能够将三证统一。",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-002",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "ALL",
+    "file": "NIS",
+    "keyword": "NIS",
+    "question": "非原台件缺少 NIS能否接受",
+    "conclusion": "无事故声明尽量让客户提供，如果不提供需向上级汇报。",
+    "background": "由柯林斯提供的交换件，厂家不能提供相应的NIS",
+    "basis": "CAAC:AC-120-FS-058 R5《合格的航材》应具备有助于确定适航性的 6.5 (7)  要求的信息（出现过的不正常情况）。\nFAA AC 20-62E 10 在评估维修记录和零部件状态时，以下信息可能很有用， C  存在不正常情况，则应该通过相关文件标识（事故事件等.）\nEASA MOA : 发生异常事件需要记录\nIATA中有关于LLP的NIS/ICS说明，维修后可使用。",
+    "keypoint": "FAA/CAAC/EASA  没有明确说明在没有出现过异常情况下，需要出具NIS，只是提到了若出现不正常情况，需记录并提供相关信息。",
+    "remark": "要求客户或厂家出具NIS",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-003",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "ALL",
+    "file": "合格证",
+    "keyword": "AAC-038 \n适用性栏",
+    "question": "CAAC挂签中适用性标注\"TEST \"，接受吗",
+    "conclusion": "不接受",
+    "background": "客户为发动机提供1个ACOC，该件的CAAC挂签适用性一栏标注\"TEST\",",
+    "basis": "该栏的填写依据为AC-145-4  5.1(9) :填写零部件所能装用于的飞机、发动机或螺旋桨的型号。",
+    "keypoint": "应填写零部件所能装用于的飞机、发动机或螺旋桨的型号。参照使用的有关手册或零部件能装在多种型号的飞机、发动机或螺旋桨上，则可填写“适用于多种型号”。如果不知道能装用的型号，则可注明“不知道”。\n如填写TEST,说明该件只能用于TEST使用。",
+    "remark": "要求厂家修改内容，若不能修改，则不接受",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-004",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "ALL",
+    "file": "合格证",
+    "keyword": "AD信息",
+    "question": "合格证备注栏中未体现AD的信息",
+    "conclusion": "需要体现AD信息",
+    "background": "V12333 客提的前吊点组件，合格证中未标注AD信息，客户的答复是：只有受AD并按AD执行了工作，才会在合格证中标注AD信息。该件不受AD影响，所以未在备注栏中标注。但在修理报告中有关于零件不受AD影响的描述。",
+    "basis": "AC-145 维修记录填写指南\nOrder_8130.21H\nMOA PART-M\n依据局方的对表格填写的要求，AD信息需要在放行挂签中有所体现",
+    "keypoint": "问题根源在对AD执行的理解，\n一些修理厂认为：零件不受AD影响，并且未按照AD的完成内容执行工作，就不算执行了AD\n我们认为：即使不受影响，并且未按照AD的完成内容执行工作，但对AD的适用性做了检查，并对零件是否受AD影响做出了判断，也算执行了AD。",
+    "remark": "不是所有厂家都能做出更改，至少需要厂家对此做出澄清。",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-005",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "ALL",
+    "file": "合格证",
+    "keyword": "PMA 件",
+    "question": "合格证中显示PMA件能接受吗",
+    "conclusion": "如果不是关键件，接受",
+    "background": "一些客户会为发动机提供PMA件，尤其是附件",
+    "basis": "MOE 2.2.2 FAA PMA件\nRSM12.2.1.1\nMMM 9.4.6.1\nEWS-EM-017 5.1.1",
+    "keypoint": "该 PMA 件不是关键件；\n持有零部件生产批准书(PMA)的附件制造商 \n运营人原则上接受FAA PMA 件的非关键件\n?",
+    "remark": "合格证上通常都注有 该 PMA 件不是关键件",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-006",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "ALL",
+    "file": "合格证",
+    "keyword": "索赔合格证",
+    "question": "索赔件无AAC-038证，能用在CAAC放行的发动机上吗",
+    "conclusion": "可以",
+    "background": "有些零件进行是索赔维修，但修理厂可能无CAAC的能力，所以无法颁发AAC-038挂签。",
+    "basis": "AC-120-FS-058合格的航材 5.3.（3）",
+    "keypoint": "如何判断是索赔修理件，通常是指令号中带有W字母",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-007",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "ALL",
+    "file": "合格证",
+    "keyword": "AAC-038 补发",
+    "question": "AAC-038的日期比其它挂签的晚能接受吗",
+    "conclusion": "接受",
+    "background": "在审零件合格证的时候，会发现AAC-038 的合格证的日期与其它合格证的日期不一样，并且是晚于其它的合格证。",
+    "basis": "AC-120-FS-058合格的航材 6.4 注2",
+    "keypoint": "需确认维修工作符合CAAC的要求的情况下颁发的，并附有同类合格证的复印件",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-008",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "ALL",
+    "file": "合格证",
+    "keyword": "WORK ORDER 不一样",
+    "question": "C证的WORK ORDER 与F/E证的不一致，但PO 一致",
+    "conclusion": "需要厂家澄清，澄清后可接受",
+    "background": "客户提供的由TCI 维修的 5331375，C证的WORK ORDER 与F/E的不一致，但是PO号是一样的。",
+    "basis": "厂家进行了澄清，是系统的原因\nPO号一致，则可以认定是同一次工作",
+    "keypoint": "通常来说WO不一样，代表的工作内容不一样，所以，需要客户进行澄清。",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-009",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "ALL",
+    "file": "合格证",
+    "keyword": "维修信息位置",
+    "question": "AUSI 信息未标注在合格证中，去哪里查找",
+    "conclusion": "可能在附属文件中体现",
+    "background": "客提件2A4802的AUSI 信息未列在合格证中，而是列在了附属文件中",
+    "basis": "",
+    "keypoint": "通常维修信息的位置是在合格证中，但有些厂家会将其列在维修附属文件中，所以审文件时需要查看每一份提供的相关文件，以便获得关键信息",
+    "remark": "有时也会在serviceable签中",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-010",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "V2500",
+    "file": "合格证",
+    "keyword": "无MOLIT合格证",
+    "question": "客户要求颁发MOLIT证书，但装机器材无MOLIT证书，能发动机颁发MOLIT证书吗",
+    "conclusion": "能",
+    "background": "对韩国客户的发动机进行维修时，客户要求颁发MOLIT证书，但发动机所使用的非原台器材或是送修返回器材均无MOLIT证书",
+    "basis": "Procedure and Quality Manual for MOLIT  4.10.3",
+    "keypoint": "Procedure and Quality Manual for MOLIT  4.10.3 显示认可MOLT / FAA / EASA / TCCA 证书",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-011",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "V2500",
+    "file": "合格证",
+    "keyword": "无CAAV合格证",
+    "question": "客户要求颁发CAAV证书，但装机器材无CAAV证书，能发动机颁发CAAV证书吗",
+    "conclusion": "能",
+    "background": "对越南客户的发动机进行维修时，客户要求颁发CAAV证书，但发动机所使用的非原台器材或是送修返回器材均无CAAV证书",
+    "basis": "CAAV MOE Supplement 2.2",
+    "keypoint": "CAAV MOE Supplement 2.2显示认可 CAAV / FAA / EASA 证书",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-012",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "RB211",
+    "file": "NIS",
+    "keyword": "零部件适航声明",
+    "question": "是否接受客户出具的《零部件适航声明》",
+    "conclusion": "可接受",
+    "background": "顺丰为31357提供器材PN:UL29028 SN:SETM13739,提供的文件缺少第一个客户为发动机出具的NIS。随后顺丰出具《零部件适航声明》并对此做出解释：“顺丰质量对二手件的NIS要求是追溯到最近一次航空运营人”。",
+    "basis": "CAAC:AC-120-FS-058 R5《合格的航材》应具备有助于确定适航性的 6.5 (7)  要求的信息（出现过的不正常情况）。\nFAA AC 20-62E 10 在评估维修记录和零部件状态时，以下信息可能很有用， C  存在不正常情况，则应该通过相关文件标识（事故事件等.）\nEASA MOA : 发生异常事件需要记录\nIATA中有关于LLP的NIS/ICS说明，维修后可使用。",
+    "keypoint": "FAA/CAAC/EASA  没有明确说明在没有出现过异常情况下，需要出具NIS，只是提到了若出现不正常情况，需记录并提供相关信息。并且顺丰在《零部件适航声明》中说明并认可该件，且对该件的适航性和追随性负责。",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-013",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "ALL",
+    "file": "合格证",
+    "keyword": "客提器材验收",
+    "question": "客提器材是否经过航材验收？",
+    "conclusion": "已经过航材验收",
+    "background": "在航材共享网站没有客户提供器材的合格证记录，航材是否经过验收。",
+    "basis": "法规对于进厂检查的程序",
+    "keypoint": "任何送到ameco的器材都经过航材验收，但航材不会保存、存储合格证。",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-014",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "ALL",
+    "file": "NIS",
+    "keyword": "国航入库件 NIS",
+    "question": "国航入库件是否需要NIS？",
+    "conclusion": "不再要求提供",
+    "background": "从国航库房领出的使用过的器材，只提供了合格证，没有NIS。",
+    "basis": "库房验收检查程序",
+    "keypoint": "库房已进行了接受检查，在证件方面已经符合要求。",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-015",
+    "category": "procedure",
+    "categoryName": "程序类",
+    "model": "ALL",
+    "file": "",
+    "keyword": "放行可行性",
+    "question": "能否对无组件号的组件执行放行",
+    "conclusion": "不可放行",
+    "background": "ESA对FDGS的风扇驱动轴、驱动齿轮等多个零件进行组件放行，合格证件序号栏填写的是风扇驱动轴的件序号,合格证备注栏标注了这些件作为组件放行且未被分解，但IPC手册中并没有这些件的组件号。",
+    "basis": "运行规范，只能对能力范围内的项目执行维修并放行",
+    "keypoint": "如果不是IPC中列出的组件，不会有组件号，也不会包含在能力清单中，并且存在某些件没有能力的风险。",
+    "remark": "需对每个零件执行放行，并且不能是多个零件组装的状态。",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-016",
+    "category": "procedure",
+    "categoryName": "程序类",
+    "model": "ALL",
+    "file": "",
+    "keyword": "放行可行性",
+    "question": "对仅执行目视检查的零件放行",
+    "conclusion": "如果附件能力清单中有依据文件和参考章节，可以放行",
+    "background": "吴征总提出：对于GTF的附件，我们是否有可能开发目视检查的适航放行能力。ESA有些件就是这样操作的。",
+    "basis": "各个局方的能力清单",
+    "keypoint": "放行能力主要依据局方批准的能力清单，能力清单中会注明工作所依据的文件，可以根据所依据的文件对批准的能力范围的工作执行放行。",
+    "remark": "即使能够放行，也需要查看目标发动机对零件状态的要求，查看目视检查是否能够满足装机要求。",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-017",
+    "category": "procedure",
+    "categoryName": "程序类",
+    "model": "ALL",
+    "file": "",
+    "keyword": "AD符合性声明",
+    "question": "单元体放行是否需要符合性声明",
+    "conclusion": "1.如果用于装在在修发动机，则不需要\n2.如果是返回客户，则需要",
+    "background": "对单元体执行放行时，向工程部索要符合性声明,工程部答复：目前没有程序支持需要颁发AD符合性声明",
+    "basis": "无程序要求颁发AD符合性声明",
+    "keypoint": "没有程序要求对单元体颁发AD符合性声明",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-018",
+    "category": "procedure",
+    "categoryName": "程序类",
+    "model": "V2500",
+    "file": "",
+    "keyword": "CAAV放行人员",
+    "question": "具有什么资质的放行人员能够对V2500发动机颁发CAAV证书",
+    "conclusion": "EASA认可的发动机放行人员",
+    "background": "如果对越南V2500发动机进行维修放行，TAS系统中并没有显示越南局方的授权，如何确认放行人员是持有CAAV放行能力的。",
+    "basis": "CAAV MOE Supplement 1.6",
+    "keypoint": "CAAV MOE Supplement 1.6 中显示 CAAV认可EASA发动机放行人员",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-019",
+    "category": "procedure",
+    "categoryName": "程序类",
+    "model": "V2500",
+    "file": "",
+    "keyword": "MOLIT放行人员",
+    "question": "具有什么资质的放行人员能够对V2500发动机颁发MOLIT证书",
+    "conclusion": "FAA认可的发动机放行人员",
+    "background": "如果对韩国V2500发动机进行维修放行，TAS系统中并没有显示韩国局方的授权，如何确认放行人员是持有MOLIT放行能力的。",
+    "basis": "Procedure and Quality Manual for MOLIT 4.8",
+    "keypoint": "Procedure and Quality Manual for MOLIT 4.8中显示 MOLIT认可FAA发动机放行人员",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-020",
+    "category": "procedure",
+    "categoryName": "程序类",
+    "model": "ALL",
+    "file": "",
+    "keyword": "依据SPM 放行",
+    "question": "发动机零部件可否依据SPM手册进行开环放行",
+    "conclusion": "可以",
+    "background": "",
+    "basis": "",
+    "keypoint": "",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-021",
+    "category": "engineering",
+    "categoryName": "工程类",
+    "model": "V2500",
+    "file": "",
+    "keyword": "SB 72-0386",
+    "question": "合格证上无SB 72-0386,只有VRS 1154 ，此情况是否满足客户执行SB72-0386 的要求",
+    "conclusion": "满足",
+    "background": "V11510 客户要求SB72-0386,但采购器材的合格证中并未体现执行了SB72-0386,但执行了VRS1154,这种情况下,为满足客户要求，是否需要开环执行SB72-0386.",
+    "basis": "SB V2500-ENG-72-0386\nEO 72-032\n\n工程部评估：风扇盘执行VRS1154，则等同于完成了SB V2500-ENG-72-0386。",
+    "keypoint": "VRS1154等同SB V2500-ENG-72-0386",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-022",
+    "category": "engineering",
+    "categoryName": "工程类",
+    "model": "ALL",
+    "file": "",
+    "keyword": "DER 修理",
+    "question": "DER修理件能否接受",
+    "conclusion": "看客户要求，通常是不接受",
+    "background": "客户为在修发动机提供OGV组件，PN:6A4509  SN: MW0247430 但该件的合格证显示执行过DER修理。",
+    "basis": "CIO或工作包",
+    "keypoint": "关注客户对器材的要求",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-023",
+    "category": "engineering",
+    "categoryName": "工程类",
+    "model": "PW1100G",
+    "file": "",
+    "keyword": "EA",
+    "question": "合格证中有EA信息能否接受",
+    "conclusion": "需要依据客户的技术数据政策和EA的类型做出判断",
+    "background": "PW1100G的零件在修理时依据EA执行了工作,对这个机型来说，这种情况很常见。",
+    "basis": "客户技术数据政策（TDP)\n工作包",
+    "keypoint": "EA类别及批准方式。\nEA 分成了  EM-EA,MR-EA,RT-EA,EA\n审批类别分为 无需批准，第一次使用需批准，每次使用都需要批准",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-024",
+    "category": "engineering",
+    "categoryName": "工程类",
+    "model": "V2500",
+    "file": "",
+    "keyword": "6B1404 螺帽声明",
+    "question": "评估二手件6B1404是否有未装过AS44862和AS64367螺帽的声明",
+    "conclusion": "有声明，可接受。\n没有，不接受。",
+    "background": "客户提供或采购的二手6B1404 ，除了需要岁合格证、NIS进行审查外，还需要有未装过AS44862和AS64367螺帽的声明",
+    "basis": "AD 2015-10-04",
+    "keypoint": "一个从未使用过镀银螺帽与高压压气机9到12级鼓连接的3到8级鼓\n无银螺帽来安装高压压气机3到8级鼓至高压压气机9到12级鼓",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-025",
+    "category": "engineering",
+    "categoryName": "工程类",
+    "model": "PW1100G",
+    "file": "",
+    "keyword": "风扇叶片 \nSB 72-00-0075",
+    "question": "72-11-0141-00A-310A-C 可以覆盖SB 72-00-0075吗？",
+    "conclusion": "物理角度满足SB检查要求",
+    "background": "P772050，客户要求对风扇叶片执行SB 72-00-0075，但串用的一片大修的风扇叶片未执行SB 72-00-0075，只是按照 72-11-0141-00A-310A-C 执行了目视检查和NDT检查。工程师在串件评估单上确认构型符合装机要求。",
+    "basis": "SB 72-00-0075 工作内容\n72-11-0141-00A-310A-C工作内容",
+    "keypoint": "SB 72-00-0075 要求对风扇叶片护盖过渡区域脱粘执行目视检查，而72-11-0141-00A-310A-C 是对风扇叶片执行全面的检查，从工作内容上看，72-11-0141-00A-310A-C 包含了SB 72-00-0075的工作内容。虽然物理角度满足SB要求，但应尽量加在合格证中。",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-026",
+    "category": "engineering",
+    "categoryName": "工程类",
+    "model": "ALL",
+    "file": "",
+    "keyword": "零件分类",
+    "question": "零件有哪些分类",
+    "conclusion": "",
+    "background": "",
+    "basis": "手册",
+    "keypoint": "从低级到高级依次为：part, subassembly, assembly, module,engine",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-027",
+    "category": "engineering",
+    "categoryName": "工程类",
+    "model": "ALL",
+    "file": "",
+    "keyword": "DER 修理",
+    "question": "DER 修理的判定方法之一",
+    "conclusion": "附带FAA 8110-3的文件的修理为DER 修理",
+    "background": "为韩亚客户询的二手件 430201 的合格证中有个 依据文件 RWD00171 , 合格证中未直接说明是DER 文件，但附带的工作指令表中显示此件按照 FAA APPROVED DATA 8110-3 RWD00171 DTD 10-04-2010 进行了大修。",
+    "basis": "",
+    "keypoint": "8110-3 为FAA DER 修理方案的批准文件。",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-028",
+    "category": "engineering",
+    "categoryName": "工程类",
+    "model": "V2500",
+    "file": "",
+    "keyword": "扩散机匣M边",
+    "question": "能否仅依据扩散机匣件号来判断是否更换过M边",
+    "conclusion": "不能。在SB 72-0709 发布之前，更换M边是不需要改变件号的。",
+    "background": "V16333 的机匣件号仍为2A2891-01,但该机匣M边在2018 年已经更换过。",
+    "basis": "TASK 72-42-11-300-028 Diffuser Case - Replace The Rear Outer Flange, Repair-028 (VRS3633)",
+    "keypoint": "早前执行VRS3633为更换M边，2022年之后，需要更改件号。",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-029",
+    "category": "engineering",
+    "categoryName": "工程类",
+    "model": "ALL",
+    "file": "",
+    "keyword": "DER 修理",
+    "question": "合格证中未明确标注为DER修理，但修理号为特殊文件号，能否接受？",
+    "conclusion": "需向厂家所要具体的文件内容，或请厂家确认是否为DER修理。",
+    "background": "V18156 在评估器材6B1158时，在合格证中出现 “20CGA001-0 EXTENDED BLEND REPAIR”的标注，再向厂家索要给文件时，厂家认为该修理属于DER 修理。",
+    "basis": "",
+    "keypoint": "合格证中未明确为DER修理，但文件号比较特殊，这种情况需谨慎处理。",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-030",
+    "category": "test_run",
+    "categoryName": "试车类",
+    "model": "PW4000",
+    "file": "",
+    "keyword": "油迹、漏油",
+    "question": "试车结束后，发现齿轮箱处有油迹，但滑耗不高。",
+    "conclusion": "",
+    "background": "Pw4000试车停转后，发现IDG与齿轮箱结合处下方有油迹，但滑耗不高。经过再次试车仔细观察，发现疑似有滑油从包皮缝隙中快速向后飞出，后续通过安装余油收集瓶的方法验证，确定IDG与齿轮箱结合处有滑油渗漏的情况。拆开后发现，碳封严损伤，并且轴承保持架缺失，滚棒异位。",
+    "basis": "",
+    "keypoint": "试车时试车间内风速大，漏出的滑油被快速吹飞，无法清晰观察滑油漏油迹象。",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-031",
+    "category": "test_run",
+    "categoryName": "试车类",
+    "model": "PW1100G",
+    "file": "",
+    "keyword": "油迹、漏油",
+    "question": "发动机试完车做出厂检查时发现左侧隔板与管子的接合面处发现有滑油油迹，经进一步分解检查，是管路封严环未安装导致。",
+    "conclusion": "左侧隔板与管子的接合面如果发现油迹，应进行进一步检查，确保封严环的状态。",
+    "background": "GTF发动机在试完过程中未发现明显的漏油情况，滑耗正常。后续在车间执行出厂检查时发现左侧隔板与管子的接合面处发现有滑油油迹，之后将管路拆下进行进一步检查，管路拆下后发现管路未安装封严环，这是导致漏油的直接原因。",
+    "basis": "",
+    "keypoint": "封圈如果未安装，试车过程中没有明显的漏油迹象，油迹容易误认为是安装时使用的滑油。",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-032",
+    "category": "procedure",
+    "categoryName": "程序类",
+    "model": "ALL",
+    "file": "",
+    "keyword": "依据SPM执行放行工作",
+    "question": "目前有些零部件是依据SPM 执行的维修，但SPM手册的章节号未出现在局方的能力清单中，这种情况能否依据SPM 进行放行？",
+    "conclusion": "目前是可以放行",
+    "background": "GTF发动机零件在进行开环放行时发现维修所依据的文件是SPM手册，单词此章节未出现在局方的能力清单中依据章节。",
+    "basis": "",
+    "keypoint": "",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-033",
+    "category": "test_run",
+    "categoryName": "试车类",
+    "model": "ALL",
+    "file": "",
+    "keyword": "试车前封堵物检查",
+    "question": "发动机在试车完成后发项塑料袋或橡胶堵盖被高温烤化，附着在发动机零件上。",
+    "conclusion": "试车前注意检查发动机上是否存在未拆下的封堵，尤其是高温区域内是否存在非金属的封堵物。",
+    "background": "在发动机试车完成后，有些管路或接头处发现烤化的塑料袋和橡胶堵。",
+    "basis": "",
+    "keypoint": "注意隐蔽位置检查",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-034",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "ALL",
+    "file": "NIS",
+    "keyword": "NIS中的日期问题",
+    "question": "如果NIS 中缺少签署日期或者日期存在逻辑错误怎么处理",
+    "conclusion": "要求厂家进行更正或者补签日期，如果无法联系到签发机构进行更正，需要厂家对问题进行澄清并报客户是否批准使用。",
+    "background": "市场采购的二手器材多是通过中介进行的购买，或者器材时间过长，有些追溯文件不完整或是存在问题，能更正的要求更正，实在无法更正的，需要进行澄清并报客户批准使用。",
+    "basis": "",
+    "keypoint": "",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-035",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "V2500",
+    "file": "合格证",
+    "keyword": "HPT 静子叶片 序号",
+    "question": "HPT 静子叶片  需要记录序号吗",
+    "conclusion": "需要有序号，因为该件有相应的EO",
+    "background": "",
+    "basis": "",
+    "keypoint": "",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-036",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "V2500",
+    "file": "合格证",
+    "keyword": "3A2412 序号",
+    "question": "合格证中没有 3A2412 序号接受吗",
+    "conclusion": "接受",
+    "background": "3A2412 有序号，但是不控制，也不需要记录。合格证中有些有序号，有些没有。",
+    "basis": "",
+    "keypoint": "",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-037",
+    "category": "test_run",
+    "categoryName": "试车类",
+    "model": "V2500",
+    "file": "",
+    "keyword": "进气道螺栓紧固检查",
+    "question": "试车结束后发现进气道螺栓松动",
+    "conclusion": "螺帽的自锁能力降低，导致螺栓在发生振动时产生了松动的迹象。安装螺栓前需关注螺帽的自锁状态。",
+    "background": "发动机在试车结束后，在进行进气道拆下工作时，发现进气道螺栓松动，经过检查确认螺帽的自锁力矩不足，试车震动后导致螺栓松动。",
+    "basis": "",
+    "keypoint": "",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-038",
+    "category": "procedure",
+    "categoryName": "程序类",
+    "model": "ALL",
+    "file": "",
+    "keyword": "开环能力",
+    "question": "零件在缺少某一局方的维修能力的时候进行了维修，在放行前得到了该局方的能力批准，能放行吗",
+    "conclusion": "不能，维修单位只能从事能力清单内的维修工作。想要放行，需在得到能力批准后，执行相应的工作。",
+    "background": "开环零件，持有FAA和CAAC维修能力，但没有EASA维修能力，该件进行了维修，在维修结束后，得到了EASA维修能力的批准。",
+    "basis": "法规",
+    "keypoint": "",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-039",
+    "category": "engineering",
+    "categoryName": "工程类",
+    "model": "PW1100G",
+    "file": "AD/SB",
+    "keyword": "SB 73-00-0057 , 执行清单",
+    "question": "GTF 发动机执行清单 有SB 73-00-0057 ,但由于不符合执行条件，车间未下发执行工卡，但客户工作包不删除，执行清单中也未删除。",
+    "conclusion": "需要工程部在执行清单的备注中标注 此次未执行，由于不符合执行条件。",
+    "background": "在核对GTF 发动机执行清单时，发现执行清单中有SB 73-00-0057 ,但由于不符合执行条件，车间未下发相应的执行工卡，工程师试图联系客户就不符合执行条件的情况要求取消，但客户认为不合条件可以不执行，无需从工作包不删除。工程部出具的执行清单是以工作包为准，所以工作包不删除，执行清单也不能删除。",
+    "basis": "SB 73-00-0057,工作包，执行清单",
+    "keypoint": "注意实际情况是否不具备执行条件",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-040",
+    "category": "test_run",
+    "categoryName": "试车类",
+    "model": "RB211",
+    "file": "",
+    "keyword": "燃油喷嘴漏油",
+    "question": "燃油喷嘴与管螺帽之间暴露出的螺纹高度较高，但气密测试通过。",
+    "conclusion": "需进一步检查，排除漏油隐患",
+    "background": "RB211在试车停车后发现41#机匣有燃油油迹，由于渗漏处位于顶部，慢车检查时无法接近观察，不能及时发现和定位漏油的位置。将管路更换后，螺纹暴露出的高度正常，故障排除。",
+    "basis": "",
+    "keypoint": "注意观察暴露出的螺纹高度的情况",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-041",
+    "category": "procedure",
+    "categoryName": "流程/程序类",
+    "model": "ALL",
+    "file": "故障单",
+    "keyword": "故障单作废",
+    "question": "故障单作废怎么处理",
+    "conclusion": "只保留第一联，且在第一联上画斜线，并标注作废字样，写作废原因。画斜线并未在流程中有体现，但依据对取消或不适用的填写要求来说，画斜线比较合适。",
+    "background": "FAA审核发现作废的故障单第一联，画的叉子且未标注作废字样，提出了观察项。",
+    "basis": "流程EP-014",
+    "keypoint": "作废字样，画斜线",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-042",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "ALL",
+    "file": "合格证",
+    "keyword": "FAA或EASA 证的时间不一致",
+    "question": "FAA或EASA证书颁发的日期不一致能接受吗",
+    "conclusion": "不能直接接受，需要澄清。",
+    "background": "器材文审时，有时会发现合格证的FAA或EASA证书颁发的日期不一致，这时需要厂家对日期不一致的情况进行澄清。只有CAAC明确可以在未颁发C证的情况下进行补发。EASA和FAA没有相关规定",
+    "basis": "CAAC 证书填写指南",
+    "keypoint": "重点观看颁发的日期",
+    "remark": "",
+    "status": "active",
+    "createdAt": "2026-09-16T00:23:03.354Z",
+    "updatedAt": "2026-09-16T00:23:03.354Z",
+    "relatedIds": [],
+    "deletedAt": null,
+    "reviewDueAt": null
+  },
+  {
+    "id": "EXP-043",
+    "category": "test_run",
+    "categoryName": "试车/出检类",
+    "model": "V2500",
+    "file": "",
+    "status": "draft",
+    "reviewDueAt": null,
+    "keyword": "滑油回滤盖",
+    "question": "1.滑油回滤盖和本体存在缝隙，仔细检查后发现是 缝隙，仔细检查后发现是缝隙，仔细检查后发现是缝隙，仔细检查后发现是 insert 突出。\n2.滑油回滤盖固定螺栓上的垫片漏装。",
+    "conclusion": "1.发现缝隙需进行进一步详细检查。\n2.发现缺少垫片需及时进行补充。",
+    "background": "1.深航在执行直送发动机 V15618入库检工作时，发现滑油回滤盖和本体存在缝隙，仔细检查后发现是insert 突出。该发动机在厂试车过程中，试车员未发现滑油渗漏现象，检查回油滤附近未发现油迹。V15618安装的回油滤壳体上的螺套材质较硬，回油滤壳体材质较软，经过多次拆装后，螺套可能会对螺栓孔造成一定的磨损，导致螺套松动从而脱出，并且在各环节的工作者未能及时发现螺套脱出。\n2.深航在执行 V18627发动机恢复工作时，发现滑油回滤盖漏装1个垫片PN:MS9321-10。V18627的主齿轮箱单元体与 V18662的主齿轮箱单元互相串用。在试车过程中，试车工作者发现了缺少的情况但却忘记了悬挂警告签。",
+    "basis": "",
+    "keypoint": "1.虽未发现有漏油的迹象，但实际螺套已经脱出。需重点观察结合面的缝隙。\n2.发现异常需及时应对处理。",
+    "remark": "",
+    "relatedIds": [],
+    "createdAt": "2026-09-18T02:45:02.256Z",
+    "updatedAt": "2026-09-18T02:57:14.640Z",
+    "deletedAt": null
+  },
+  {
+    "id": "EXP-044",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "ALL",
+    "file": "",
+    "status": "draft",
+    "reviewDueAt": null,
+    "keyword": "是",
+    "question": "是否",
+    "conclusion": "收到",
+    "background": "",
+    "basis": "",
+    "keypoint": "",
+    "remark": "",
+    "relatedIds": [],
+    "createdAt": "2026-09-18T10:04:07.006Z",
+    "updatedAt": "2026-09-18T10:04:07.006Z",
+    "deletedAt": null
+  },
+  {
+    "id": "EXP-045",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "ALL",
+    "file": "",
+    "status": "draft",
+    "reviewDueAt": null,
+    "keyword": "的",
+    "question": "de",
+    "conclusion": "de",
+    "background": "",
+    "basis": "",
+    "keypoint": "",
+    "remark": "",
+    "relatedIds": [],
+    "createdAt": "2026-09-18T10:06:03.205Z",
+    "updatedAt": "2026-09-18T10:06:03.205Z",
+    "deletedAt": null
+  },
+  {
+    "id": "EXP-046",
+    "category": "material",
+    "categoryName": "器材文审类",
+    "model": "ALL",
+    "file": "",
+    "status": "draft",
+    "reviewDueAt": null,
+    "keyword": "份",
+    "question": "份",
+    "conclusion": "份",
+    "background": "",
+    "basis": "",
+    "keypoint": "",
+    "remark": "",
+    "relatedIds": [],
+    "createdAt": "2026-09-20T08:45:42.565Z",
+    "updatedAt": "2026-09-20T08:45:42.565Z",
+    "deletedAt": null
+  }
+/*@@EXP_END@@*/];
+
+const INITIAL_KB_DATA = [/*@@KB_START@@*/
+  {
+    "id": "KB-001",
+    "title": "铭牌",
+    "category": "reference",
+    "model": "PW1100G",
+    "summary": "铭牌信息识别",
+    "content": "PW1133GA-JM\nPW = Pratt & Whitney,\n1 = PW1100 engine model\n1 = Airbus airframe\n33 = Thrust rating\nG = Geared fan\nA = Alternate climb\nJM is for joint partners ：J = Japanese Aero Engines Corporation (JAEC) ; M = MTU Aero Engines (MTU)",
+    "source": "PW1100G-A-00-00-00-01A-018A-B\nIntroduction To The Interactive Electronic Technical Publication (IETP)",
+    "updatedAt": "2026-09-01"
+  },
+  {
+    "id": "KB-002",
+    "title": "构型分类",
+    "category": "reference",
+    "model": "PW1100G",
+    "summary": "型号分类",
+    "content": "PW1100G-JM Base Engine\nPW11XXGX-JM\n\nPW1100G-JM Advantage Engine\nPW11XXGX/2-JM",
+    "source": "PW1100G-A-00-00-00-01A-018A-B\nIntroduction To The Interactive Electronic Technical Publication (IETP)",
+    "updatedAt": "2026-09-01"
+  },
+  {
+    "id": "KB-003",
+    "title": "工序中的-A、-B、-C",
+    "category": "reference",
+    "model": "PW1100G",
+    "summary": "工序中的-A、-B、-C区别是什么",
+    "content": "手册中的一个工序可能存在的3种情况该如何选取\nPW1100G-A-72-00-34-00A-520A-B\nPW1100G-B-72-00-34-00A-520A-B\nPW1100G-C-72-00-34-00A-520A-B\n\n关键点/难点：PW1100G-A : Base Engine & Derivative engine\nPW1100G-B : Base Engine\nPW1100G-C : GTF Advantage (GTF-A) engine\n\nPW1100G-JM Base Engine : PW11XXGX-JM\nPW1100G-JM Advantage Engine : PW11XXGX/2-JM",
+    "source": "PW1100G-A-00-00-00-01A-018A-B\nIntroduction To The Interactive Electronic Technical Publication (IETP)",
+    "updatedAt": "2026-09-01"
+  },
+  {
+    "id": "KB-004",
+    "title": "新件可直接安装",
+    "category": "reference",
+    "model": "PW1100G",
+    "summary": "新件是否需要作检查",
+    "content": "评估结果：不需要",
+    "source": "70-31-00-200-001 General - Inspection\nB(2) :",
+    "updatedAt": "2026-09-01"
+  },
+  {
+    "id": "KB-005",
+    "category": "reference",
+    "model": "V2500",
+    "title": "HPT 1 HUB  PN: 2A5001",
+    "summary": "SB 72-0720 与 72-0713 区别",
+    "content": "IAE于11月新发SB 72-0720（从SB 72-0713又挑出677个盘）",
+    "source": "SB 72-0713、SB 72-0720",
+    "updatedAt": "2026-09-15"
+  },
+  {
+    "id": "KB-006",
+    "category": "reference",
+    "model": "V2500",
+    "title": "扩散机匣M边",
+    "summary": "扩散机匣M边更换",
+    "content": "扩散机匣M边 ：REPAIR 028 (VRS3633) 为更换M 边，但该工序已被删除。之后，执行SB72-0709 为更换M边。",
+    "source": "SB72-0709 REPAIR 028 (VRS3633)",
+    "updatedAt": "2026-09-15"
+  },
+  {
+    "id": "KB-007",
+    "category": "reference",
+    "model": "V2500",
+    "title": "HPT 1 HUB 计量堵头",
+    "summary": "72-0511  禁装计量堵头",
+    "content": "72-0511  禁装计量堵头",
+    "source": "SB 72-0511",
+    "updatedAt": "2026-09-15"
+  },
+  {
+    "id": "KB-008",
+    "category": "reference",
+    "model": "RB211",
+    "title": "HPC 3 DISC",
+    "summary": "HPC 3 DISC  PN:UL29347  循环变化",
+    "content": "根据SB72-9434，执行改型后，循环提到门槛值9000",
+    "source": "SB72-9434",
+    "updatedAt": "2026-09-15"
+  },
+  {
+    "id": "KB-009",
+    "category": "reference",
+    "model": "RB211",
+    "title": "SB 72-C930",
+    "summary": "执行 SB72-C925满足SB 72-C930要求。",
+    "content": "SB 适用于LK76084,SB72-C925要求将LK76084换位FB222165,所以执行过SB72-925则视为满足要求。",
+    "source": "SB72-C925,SB 72-C930",
+    "updatedAt": "2026-09-15"
+  },
+  {
+    "id": "KB-010",
+    "category": "reference",
+    "model": "RB211",
+    "title": "SB 72-D176",
+    "summary": "执行 SB 72-D176 满足SB72-925要求。",
+    "content": "AD适用于LK76084,SB72-C925要求将LK76084换位FB222165,所以执行过SB72-925则视为满足要求",
+    "source": "SB72-C925,SB 72-D176",
+    "updatedAt": "2026-09-15"
+  },
+  {
+    "id": "KB-011",
+    "category": "reference",
+    "model": "RB211",
+    "title": "SB 72-C815",
+    "summary": "执行SB72-C925满足SB72-925要求。",
+    "content": "AD适用于LK76084,SB72-C925要求将LK76084换位FB222165,所以执行过SB72-925则视为满足要求",
+    "source": "SB72-C925，SB 72-C815",
+    "updatedAt": "2026-09-15"
+  },
+  {
+    "id": "KB-012",
+    "category": "reference",
+    "model": "PW1100G",
+    "title": "SB 级别",
+    "summary": "SB 等级分类",
+    "content": "3\t4\t5\t6\t7\t8\t9\nTC:   Type Certificate",
+    "source": "手册",
+    "updatedAt": "2026-09-15"
+  },
+  {
+    "id": "KB-013",
+    "category": "reference",
+    "model": "V2500",
+    "title": "SB 等级",
+    "summary": "SB 等级分类",
+    "content": "3\t4\t5\t6\t7\t8\nVB:   Vendor Bulletin",
+    "source": "手册",
+    "updatedAt": "2026-09-15"
+  },
+  {
+    "id": "KB-014",
+    "category": "reference",
+    "model": "RB211",
+    "title": "SB 等级",
+    "summary": "SB 等级分类",
+    "content": "ALERT\t\t\tRECOMMENDED\t\t\tPTIONAL\t\t\tINFORMATION\t\nThis Service Bulletin (Modification) is introduced for Record Purposes Only",
+    "source": "手册",
+    "updatedAt": "2026-09-15"
+  },
+  {
+    "id": "KB-015",
+    "category": "regulation",
+    "model": "ALL",
+    "title": "EASA 局方类别",
+    "summary": "C1：\tENGINE / APU ；\nC7：\tENGINE / APU 的部件",
+    "content": "C1\tENGINE / APU\nC7\tENGINE / APU 的部件",
+    "source": "",
+    "updatedAt": "2026-09-15"
+  },
+  {
+    "id": "KB-016",
+    "category": "safety",
+    "model": "ALL",
+    "title": "12个陷阱",
+    "summary": "12个陷阱内容",
+    "content": "缺乏专业知识，缺乏团队精神，缺乏主见，缺乏警觉，\n自满大意，惯性违章，工作压力，\n沟通不良，沟通不良，\n分心，疲劳，紧张。",
+    "source": "",
+    "updatedAt": "2026-09-15"
+  },
+  {
+    "id": "KB-017",
+    "category": "regulation",
+    "model": "ALL",
+    "title": "EASA",
+    "summary": "法规缩写",
+    "content": "IR：Implementing Rule\t实施规则\nCS：Certification Specification\t认证规范\nAMC：Acceptable Means of Compliance\t可接受的遵守方式\nGM：Guidance Material\t指导材料",
+    "source": "",
+    "updatedAt": "2026-09-15"
+  },
+  {
+    "id": "KB-018",
+    "category": "reference",
+    "model": "ALL",
+    "title": "ETOPS / EDTO",
+    "summary": "ETOPS / EDTO 相关",
+    "content": "FAA: ETOPS  Extended-range Twin-engine Operational Performance Standards 双发延伸航程运行\nCAAC: EDTO Extended Diversion Time Operations 延程运行\nEASA : ETOPS → EDTO 正在由ETOPS 向 EDTO 过渡\nICAO : ESTO \n门槛时间：双发飞机通常以60分钟为触发ETOPS/EDTO的门槛，三发/四发通常为180分钟。",
+    "source": "CCAR-121 W  ,  14 CFR Part 121 , EU-OPS / Part-SPA",
+    "updatedAt": "2026-09-18"
+  },
+  {
+    "id": "KB-019",
+    "category": "reference",
+    "model": "ALL",
+    "title": "我的",
+    "summary": "队伍d",
+    "content": "我",
+    "source": "",
+    "updatedAt": "2026-09-18"
+  }
+/*@@KB_END@@*/];
+
+const STORAGE_KEY = 'experience_data_v1789893946897';
+const THEME_KEY = 'experience_admin_theme';
+const KB_STORAGE_KEY = 'knowledge_base_v1789893946897';
+const PANEL_KEY = 'current_panel';
+const EDIT_KEY = 'fx2026admin';
+const AUTH_STORAGE_KEY = 'fx_access_auth';
+const TRASH_RETENTION_DAYS = 30;
+const CONFLICT_SIMILARITY_THRESHOLD = 0.55;
+const CONFLICT_MIN_KEYWORD_LEN = 3;
+const VALID_PANELS = ['experience', 'knowledge', 'trash'];
+
+const FALLBACK_EXP_KEYS = [];
+const FALLBACK_KB_KEYS  = ['knowledge_base_v5_3', 'knowledge_base_v5_2', 'knowledge_base_v5_0', 'knowledge_base_v4_1', 'knowledge_base_v4_0', 'knowledge_base_v3_2', 'knowledge_base_v3_1', 'knowledge_base_v1789516033295'];
+
+const SYNONYMS = {
+  '合格证': ['挂签', 'AAC-038', '8130-3', 'Form 1', 'c of c', 'serviceable', 'certificate'],
+  '挂签': ['合格证', 'AAC-038', '8130-3', 'Form 1', 'serviceable'],
+  'aac-038': ['合格证', '挂签', 'caac', '补发'],
+  'nis': ['无事故声明', '无异常声明', 'no incident statement'],
+  '无事故声明': ['nis'], '无异常声明': ['nis'],
+  'pma': ['pma件', 'pma part', 'parts manufacturer approval'],
+  'der': ['der修理', 'der repair'],
+  'ad': ['适航指令', 'airworthiness directive'],
+  'sb': ['服务通告', 'service bulletin'],
+  'eo': ['工程指令', 'engineering order'],
+  'vrs': ['vendor repair scheme', '修理方案'],
+  '放行': ['release', '批准放行', '放行证书'],
+  '维修': ['修理', 'repair', 'maintenance'],
+  '改装': ['modification', 'mod', 'modified'],
+  '风扇叶片': ['fan blade', '风扇叶'],
+  '漏油': ['滑油渗漏', '油迹', 'oil leak', '滑油泄漏'],
+  '滑耗': ['滑油消耗', 'oil consumption'],
+  '螺栓': ['螺帽', '螺钉', 'bolt', 'nut'],
+  '试车': ['试验', 'test run', '台架'],
+  '开环': ['开环放行', 'open loop'],
+  '客提件': ['客户提供件', 'customer supplied'],
+  '索赔': ['warranty', '保修'],
+  '封严': ['封圈', '密封', 'seal'],
+  '单元体': ['module', '模块'],
+  '序号': ['s/n', 'sn', 'serial number'],
+  '件号': ['p/n', 'pn', 'part number'],
+};
+
+const ENTITY_PATTERNS = [
+  { type: 'sb', label: 'SB', re: /\bSB\s?(\d{2}-[A-Z]?\d{3,4})\b/gi },
+  { type: 'vrs', label: 'VRS', re: /\bVRS\s?(\d{3,4})\b/gi },
+  { type: 'ad', label: 'AD', re: /\bAD\s?(\d{4}-\d{2}-\d{2})\b/gi },
+  { type: 'eo', label: 'EO', re: /\bEO\s?(\d{2}-\d{3,4})\b/gi },
+  { type: 'pn', label: 'PN', re: /\b(?:PN|P\/N)[:\s]+([A-Z0-9][A-Z0-9\-]{3,19})\b/gi },
+  { type: 'sn', label: 'SN', re: /\b(?:SN|S\/N)[:\s]+([A-Z0-9][A-Z0-9\-]{3,19})\b/gi },
+];
+
+const entityCache = new Map();
+
+function extractEntities(text) {
+  if (!text) return [];
+  const found = [];
+  const seen = new Set();
+  for (const pat of ENTITY_PATTERNS) {
+    const regex = new RegExp(pat.re.source, pat.re.flags);
+    let m;
+    while ((m = regex.exec(text)) !== null) {
+      const key = pat.type + ':' + m[1].toUpperCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      found.push({ type: pat.type, label: pat.label, value: m[1].toUpperCase(), display: pat.label + ' ' + m[1].toUpperCase(), key: key });
+    }
+  }
+  return found;
+}
+
+function getRecordEntities(r) {
+  if (!r) return [];
+  const cacheKey = r.id + '@' + (r.updatedAt || '');
+  if (entityCache.has(cacheKey)) return entityCache.get(cacheKey);
+  const text = [r.keyword, r.question, r.conclusion, r.background, r.basis, r.keypoint, r.remark].filter(Boolean).join(' ');
+  const entities = extractEntities(text);
+  entityCache.set(cacheKey, entities);
+  return entities;
+}
+
+let records = [];
+let knowledgeBase = [];
+let filteredRecords = [];
+let currentPage = 1, pageSize = 10;
+let currentCategory = 'all';
+let currentModel = 'all';
+let currentEntityFilter = null;
+let searchQuery = '';
+let sortField = 'id', sortOrder = 'asc';
+let editingId = null;
+let deleting = { type: null, id: null, permanent: false };
+let drawerMode = 'view';
+let currentPanel = 'experience';
+
+let currentKBCat = 'all', currentKBModel = 'all';
+let kbSearchTerm = '';
+let kbFiltered = [];
+let kbCurrentPage = 1, kbPageSize = 10;
+let kbSortField = 'id', kbSortOrder = 'asc';
+let kbEditingId = null;
+
+let tooltipTimer = null;
+let lastPointer = { x: 0, y: 0 };
+let tooltipRafPending = false;
+let searchDebounceTimer = null;
+let kbSearchDebounceTimer = null;
+let pendingConflictSave = null;
+
+let chatMode = 'experience';
+let chatHistory = [];
+
+const CAT_FULL = { material: '器材文审类', procedure: '流程/程序类', engineering: '工程类', test_run: '试车/出检类' };
+const CAT_SHORT = { material: '器材文审', procedure: '流程/程序类', engineering: '工程类', test_run: '试车/出检类' };
+const KB_CAT_NAMES = { all: '全部', ad: 'AD', regulation: '法规/程序/流程', training: '审核', reference: '工程构型', safety: '质量安全' };
+const KB_MODEL_NAMES = { all: '全部', PW1100G: 'PW1100G', V2500: 'V2500', PW4000: 'PW4000', RB211: 'RB211', GEnx: 'GEnx' };
+const MODEL_NAMES = { all: '全部', V2500: 'V2500', PW1100G: 'PW1100G', RB211: 'RB211', PW4000: 'PW4000', GEnx: 'GEnx' };
+const STATUS_LABELS = { draft: '草稿', review: '待审核', confirmed: '已确认', archived: '已归档' };
+
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function escapeAttr(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+function truncate(str, max) {
+  if (!str) return '';
+  return str.length > max ? str.slice(0, max) + '…' : str;
+}
+function formatDateTime(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    const pad = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  } catch (e) { return ''; }
+}
+function daysUntil(iso) {
+  if (!iso) return Infinity;
+  return Math.ceil((new Date(iso).getTime() + TRASH_RETENTION_DAYS * 86400000 - Date.now()) / 86400000);
+}
+
+function normalizeRecord(r) {
+  if (!r.createdAt) r.createdAt = new Date().toISOString();
+  if (!r.updatedAt) r.updatedAt = r.createdAt;
+  if (!Array.isArray(r.relatedIds)) r.relatedIds = [];
+  if (r.deletedAt === undefined) r.deletedAt = null;
+  if (!r.status) r.status = 'confirmed';
+  if (r.reviewDueAt === undefined) r.reviewDueAt = null;
+  delete r.viewCount;
+  delete r.lastViewedAt;
+  delete r._score;
+  return r;
+}
+
+function init() {
+  try {
+    localStorage.removeItem('zero_result_queries_v1');
+  } catch (e) {}
+  loadData();
+  loadKBData();
+  cleanupTrash();
+  migrateExperienceIds();
+  migrateKBIds();
+  loadTheme();
+  initPanel();
+  updateBadges();
+  updateKBCounts();
+  updateKBCatBadges();
+  updateModelTags();
+  renderKBModelTags();
+  applyFilters();
+  applyKBFilters();
+  renderTrash();
+  updateSortIndicators('exp');
+  updateSortIndicators('kb');
+  applyMode(isAuthenticated());
+}
+
+function migrateExperienceIds() {
+  const needMigrate = records.some(r => !/^EXP-\d{3,}$/.test(r.id));
+  if (!needMigrate) return;
+  records.forEach((r, i) => { r.id = 'EXP-' + String(i + 1).padStart(3, '0'); });
+  saveData();
+}
+function migrateKBIds() {
+  const needMigrate = knowledgeBase.some(k => !/^KB-\d{3,}$/.test(k.id));
+  if (!needMigrate) return;
+  knowledgeBase.forEach((k, i) => { k.id = 'KB-' + String(i + 1).padStart(3, '0'); });
+  saveKBData();
+}
+function initPanel() {
+  let saved = localStorage.getItem(PANEL_KEY) || 'experience';
+  if (!VALID_PANELS.includes(saved)) saved = 'experience';
+  switchPanel(saved, false);
+}
+function switchPanel(panel, save) {
+  if (save === undefined) save = true;
+  if (panel === 'trash' && !isAuthenticated()) panel = 'experience';
+  if (!VALID_PANELS.includes(panel)) panel = 'experience';
+  hideTooltip();
+  currentPanel = panel;
+  document.querySelectorAll('.panel-view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.panel-switch').forEach(el => el.classList.toggle('active', el.dataset.panel === panel));
+  const panelEl = document.getElementById('panel-' + panel);
+  if (panelEl) panelEl.classList.add('active');
+  if (panel === 'knowledge') renderKBTable();
+  if (panel === 'trash') renderTrash();
+  const content = panelEl ? panelEl.querySelector('.content') : null;
+  if (content) content.scrollTop = 0;
+  if (save) localStorage.setItem(PANEL_KEY, panel);
+}
+
+function loadData() {
+  const tryParse = (str) => { try { const p = JSON.parse(str); return Array.isArray(p) ? p : null; } catch (e) { return null; } };
+  const keys = [STORAGE_KEY, ...FALLBACK_EXP_KEYS];
+  for (const k of keys) {
+    const saved = localStorage.getItem(k);
+    if (saved) {
+      const parsed = tryParse(saved);
+      if (parsed) {
+        records = parsed.map(normalizeRecord);
+        if (k !== STORAGE_KEY) saveData();
+        return;
+      }
+    }
+  }
+  records = JSON.parse(JSON.stringify(INITIAL_DATA)).map(normalizeRecord);
+  saveData();
+}
+function saveData() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    entityCache.clear();
+    return true;
+  } catch (e) { showToast('保存失败：本地存储空间不足', 'error'); return false; }
+}
+function loadKBData() {
+  const tryParse = (str) => { try { const p = JSON.parse(str); return Array.isArray(p) ? p : null; } catch (e) { return null; } };
+  const keys = [KB_STORAGE_KEY, ...FALLBACK_KB_KEYS];
+  for (const k of keys) {
+    const saved = localStorage.getItem(k);
+    if (saved) {
+      const parsed = tryParse(saved);
+      if (parsed) {
+        knowledgeBase = parsed;
+        if (k !== KB_STORAGE_KEY) saveKBData();
+        return;
+      }
+    }
+  }
+  knowledgeBase = JSON.parse(JSON.stringify(INITIAL_KB_DATA));
+  saveKBData();
+}
+function saveKBData() {
+  try { localStorage.setItem(KB_STORAGE_KEY, JSON.stringify(knowledgeBase)); return true; }
+  catch (e) { showToast('保存失败', 'error'); return false; }
+}
+function cleanupTrash() {
+  const now = Date.now();
+  const threshold = TRASH_RETENTION_DAYS * 86400000;
+  const before = records.length;
+  records = records.filter(r => !r.deletedAt || (now - new Date(r.deletedAt).getTime()) < threshold);
+  if (records.length !== before) saveData();
+}
+
+function loadTheme() {
+  const theme = localStorage.getItem(THEME_KEY) || 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  updateThemeIcon(theme);
+}
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+  updateThemeIcon(next);
+}
+function updateThemeIcon(theme) {
+  const sunPath = '<circle cx="12" cy="12" r="5"/>';
+  const moonPath = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+  ['themeIcon','themeIconKB','themeIconTrash'].forEach(id => {
+    const icon = document.getElementById(id);
+    if (icon) icon.innerHTML = theme === 'dark' ? sunPath : moonPath;
+  });
+}
+
+function activeRecords() { return records.filter(r => !r.deletedAt); }
+function trashedRecords() { return records.filter(r => r.deletedAt); }
+
+function updateBadges() {
+  const active = activeRecords();
+  document.querySelectorAll('#catTags .cat-tag').forEach(tag => {
+    const cat = tag.dataset.cat;
+    const count = cat === 'all' ? active.length : active.filter(r => r.category === cat).length;
+    const badgeEl = tag.querySelector('.cat-badge');
+    if (badgeEl) badgeEl.textContent = count;
+  });
+  const footerExpTotal = document.getElementById('footer-exp-total');
+  if (footerExpTotal) footerExpTotal.textContent = active.length;
+  const tb = document.getElementById('trash-badge');
+  if (tb) tb.textContent = trashedRecords().length;
+}
+function updateKBCounts() {
+  const kbTotal = document.getElementById('footer-kb-total');
+  if (kbTotal) kbTotal.textContent = knowledgeBase.length;
+  const expTotal = document.getElementById('footer-exp-total');
+  if (expTotal) expTotal.textContent = activeRecords().length;
+}
+function updateKBCatBadges() {
+  const badges = {
+    all: knowledgeBase.length,
+    ad: knowledgeBase.filter(k => k.category === 'ad').length,
+    regulation: knowledgeBase.filter(k => k.category === 'regulation').length,
+    training: knowledgeBase.filter(k => k.category === 'training').length,
+    reference: knowledgeBase.filter(k => k.category === 'reference').length,
+    safety: knowledgeBase.filter(k => k.category === 'safety').length
+  };
+  Object.keys(badges).forEach(cat => {
+    const el = document.getElementById('kb-badge-' + cat);
+    if (el) el.textContent = badges[cat];
+  });
+}
+
+function getStatusDot(status) {
+  const s = status || 'confirmed';
+  return '<span class="status-dot ' + s + '" title="' + (STATUS_LABELS[s] || s) + '"></span>';
+}
+
+function updateModelTags() {
+  const modelList = ['all', 'V2500', 'PW1100G', 'RB211', 'PW4000', 'GEnx'];
+  const tagsHtml = modelList.map(model =>
+    '<span class="model-tag' + (model === currentModel ? ' active' : '') + '" data-model="' + model + '" onclick="filterByModel(\'' + model + '\')">' + MODEL_NAMES[model] + '</span>'
+  ).join('');
+  const el = document.getElementById('modelTags');
+  if (el) el.innerHTML = tagsHtml;
+}
+function filterByCategory(cat) {
+  currentCategory = cat;
+  document.querySelectorAll('#catTags .cat-tag').forEach(tag => {
+    tag.classList.toggle('active', tag.dataset.cat === cat);
+  });
+  currentPage = 1;
+  updateModelTagsForCategory(cat);
+  applyFilters();
+}
+function updateModelTagsForCategory(cat) {
+  const active = activeRecords();
+  const filtered = cat === 'all' ? active : active.filter(r => r.category === cat);
+  const modelSet = new Set(filtered.map(r => r.model));
+  document.querySelectorAll('#modelTags .model-tag').forEach(tag => {
+    const model = tag.dataset.model;
+    const hasData = model === 'all' || modelSet.has(model) || modelSet.has('ALL');
+    tag.style.pointerEvents = hasData ? '' : 'none';
+    tag.style.opacity = hasData ? '' : '0.35';
+    tag.style.cursor = hasData ? '' : 'not-allowed';
+  });
+  if (currentModel !== 'all' && !modelSet.has(currentModel) && !modelSet.has('ALL')) {
+    currentModel = 'all';
+    document.querySelectorAll('#modelTags .model-tag').forEach(tag => {
+      tag.classList.toggle('active', tag.dataset.model === 'all');
+    });
+  }
+}
+function filterByModel(model) {
+  currentModel = model;
+  currentPage = 1;
+  applyFilters();
+  document.querySelectorAll('#modelTags .model-tag').forEach(tag => {
+    tag.classList.toggle('active', tag.dataset.model === model);
+  });
+}
+function filterByEntity(entityKey) {
+  if (currentEntityFilter === entityKey) return;
+  currentEntityFilter = entityKey;
+  currentPage = 1;
+  applyFilters();
+  const panelEl = document.getElementById('panel-experience');
+  if (panelEl) {
+    const content = panelEl.querySelector('.content');
+    if (content) content.scrollTop = 0;
+  }
+}
+function clearEntityFilter() {
+  currentEntityFilter = null;
+  currentPage = 1;
+  applyFilters();
+}
+function renderEntityFilterBar() {
+  const bar = document.getElementById('entityFilterBar');
+  if (!bar) return;
+  if (!currentEntityFilter) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  const parts = currentEntityFilter.split(':');
+  const display = parts[0].toUpperCase() + ' ' + parts[1];
+  bar.style.display = 'block';
+  bar.innerHTML = '<span style="font-size:12px;color:var(--text-secondary);margin-right:8px;">按实体筛选：</span>' +
+    '<span class="entity-filter-chip" onclick="clearEntityFilter()">' + escapeHtml(display) + ' <span class="remove">×</span></span>';
+}
+
+function parseNaturalQuery(q) {
+  const result = { text: q, model: null, category: null, days: null };
+  let remaining = q;
+  const modelMatch = remaining.match(/\b(V2500|PW1100G|PW4000|RB211|GEnx)\b/i);
+  if (modelMatch) {
+    result.model = modelMatch[1];
+    remaining = remaining.replace(modelMatch[0], '');
+  }
+  const catMap = { '器材': 'material', '材料': 'material', '文审': 'material', '程序': 'procedure', '流程': 'procedure', '工程': 'engineering', '试车': 'test_run', '试验': 'test_run', '出检': 'test_run' };
+  for (const key in catMap) {
+    if (remaining.includes(key)) {
+      result.category = catMap[key];
+      remaining = remaining.replace(key, '');
+      break;
+    }
+  }
+  const timeMatch = remaining.match(/最近\s*(\d+)\s*[天日]|上个月|上月|本周|上周/);
+  if (timeMatch) {
+    if (timeMatch[1]) result.days = parseInt(timeMatch[1]);
+    else if (timeMatch[0].includes('上个月') || timeMatch[0].includes('上月')) result.days = 30;
+    else if (timeMatch[0].includes('本周')) result.days = 7;
+    else if (timeMatch[0].includes('上周')) result.days = 14;
+    remaining = remaining.replace(timeMatch[0], '');
+  }
+  result.text = remaining.trim();
+  return result;
+}
+
+function handleSearch(val) {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    const raw = (val || '').trim();
+    if (raw && raw.length >= 3 && /[型号]|最近|上个月|本周|上周|器材|程序|工程|试车|出检/.test(raw)) {
+      const parsed = parseNaturalQuery(raw);
+      if (parsed.model || parsed.category || parsed.days) {
+        searchQuery = parsed.text.toLowerCase();
+        if (parsed.model) currentModel = parsed.model;
+        if (parsed.category) currentCategory = parsed.category;
+        window._nlDays = parsed.days;
+        updateModelTags();
+        document.querySelectorAll('#catTags .cat-tag').forEach(tag => {
+          tag.classList.toggle('active', tag.dataset.cat === currentCategory);
+        });
+        currentPage = 1;
+        applyFilters();
+        return;
+      }
+    }
+    window._nlDays = null;
+    searchQuery = raw.toLowerCase();
+    currentPage = 1;
+    applyFilters();
+  }, 220);
+}
+
+function applyFilters() {
+  hideTooltip();
+  const active = activeRecords();
+  let result = active.filter(r => {
+    if (currentCategory !== 'all' && r.category !== currentCategory) return false;
+    if (currentModel !== 'all' && r.model !== currentModel && r.model !== 'ALL') return false;
+    return true;
+  });
+  if (window._nlDays) {
+    const threshold = Date.now() - window._nlDays * 86400000;
+    result = result.filter(r => new Date(r.updatedAt).getTime() >= threshold);
+  }
+  if (currentEntityFilter) {
+    const [type, val] = currentEntityFilter.split(':');
+    result = result.filter(r => {
+      const ents = getRecordEntities(r);
+      return ents.some(e => e.type === type && e.value === val);
+    });
+  }
+  if (searchQuery && searchQuery.trim()) {
+    result = result.map(r => Object.assign({}, r, { _score: calcExpRelevance(searchQuery, r) }))
+      .filter(r => r._score > 0)
+      .sort((a, b) => b._score - a._score);
+  } else {
+    result = result.map(r => Object.assign({}, r, { _score: 0 }));
+    const sf = sortField || 'id';
+    result.sort((a, b) => {
+      let va = a[sf] || '', vb = b[sf] || '';
+      if (sf === 'id') {
+        const ma = String(va).match(/(\d+)$/), mb = String(vb).match(/(\d+)$/);
+        va = ma ? parseInt(ma[1]) : 0; vb = mb ? parseInt(mb[1]) : 0;
+      }
+      if (va < vb) return sortOrder === 'asc' ? -1 : 1;
+      if (va > vb) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+  filteredRecords = result;
+  currentPage = 1;
+  renderTable();
+  renderSmartJudgmentExp(searchQuery, result.filter(r => r._score > 0));
+  renderEntityFilterBar();
+}
+
+function sortBy(field) {
+  if (sortField === field) sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+  else { sortField = field; sortOrder = 'asc'; }
+  updateSortIndicators('exp');
+  applyFilters();
+}
+function updateSortIndicators(which) {
+  const table = which === 'exp'
+    ? document.querySelector('#panel-experience table')
+    : document.querySelector('#panel-knowledge table');
+  if (!table) return;
+  const field = which === 'exp' ? sortField : kbSortField;
+  const order = which === 'exp' ? sortOrder : kbSortOrder;
+  table.querySelectorAll('th[data-sort-field]').forEach(th => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (th.dataset.sortField === field) {
+      th.classList.add(order === 'asc' ? 'sort-asc' : 'sort-desc');
+    }
+  });
+}
+
+function renderTable() {
+  hideTooltip();
+  const start = (currentPage - 1) * pageSize;
+  const end = start + pageSize;
+  const pageData = filteredRecords.slice(start, end);
+  const html = pageData.map(r => {
+    const statusDot = getStatusDot(r.status);
+    return '<tr data-id="' + r.id + '"' +
+    ' onmouseenter="showTooltip(event, \'' + r.id + '\')"' +
+    ' onmousemove="moveTooltip(event)"' +
+    ' onmouseleave="hideTooltip()">' +
+    '<td class="col-id">' + statusDot + escapeHtml(r.id) + '</td>' +
+    '<td class="col-cat"><span class="cell-cat ' + r.category + '">' + (CAT_SHORT[r.category] || '') + '</span></td>' +
+    '<td class="col-model"><span class="model-badge">' + escapeHtml(r.model) + '</span></td>' +
+    '<td class="col-file">' + (r.file ? escapeHtml(r.file) : '<span style="color:var(--text-tertiary);">-</span>') + '</td>' +
+    '<td class="col-keyword">' + escapeHtml(r.keyword) + '</td>' +
+    '<td class="col-question"><div class="text-ellipsis">' + escapeHtml(r.question) + '</div></td>' +
+    '<td class="col-conclusion"><div class="text-ellipsis">' + escapeHtml(r.conclusion) + '</div></td>' +
+    '<td class="col-action"><div class="action-btns">' +
+    '<button class="btn-text" onclick="event.stopPropagation();viewRecord(\'' + r.id + '\')">查看</button>' +
+    '<button class="btn-text" onclick="event.stopPropagation();editRecord(\'' + r.id + '\')">编辑</button>' +
+    '</div></td></tr>';
+  }).join('');
+  const tbody = document.getElementById('tableBody');
+  if (tbody) tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-tertiary);">暂无数据</td></tr>';
+  updatePagination();
+}
+function updatePagination() {
+  const total = filteredRecords.length;
+  const totalPages = Math.ceil(total / pageSize) || 1;
+  const start = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const end = Math.min(currentPage * pageSize, total);
+  const info = document.getElementById('paginationInfo');
+  if (info) info.textContent = '显示 ' + start + '-' + end + ' 条，共 ' + total + ' 条';
+  const prev = document.getElementById('prevBtn');
+  const next = document.getElementById('nextBtn');
+  if (prev) prev.disabled = currentPage <= 1;
+  if (next) next.disabled = currentPage >= totalPages;
+  let startPage = Math.max(1, currentPage - 2);
+  let endPage = Math.min(totalPages, startPage + 4);
+  if (endPage - startPage + 1 < 5) startPage = Math.max(1, endPage - 4);
+  const pageNums = document.getElementById('pageNumbers');
+  if (pageNums) {
+    let html = '';
+    for (let i = startPage; i <= endPage; i++) {
+      html += '<button class="page-btn ' + (i === currentPage ? 'active' : '') + '" onclick="goToPage(' + i + ')">' + i + '</button>';
+    }
+    pageNums.innerHTML = html;
+  }
+}
+function prevPage() { if (currentPage > 1) { currentPage--; renderTable(); } }
+function nextPage() { const totalPages = Math.ceil(filteredRecords.length / pageSize); if (currentPage < totalPages) { currentPage++; renderTable(); } }
+function goToPage(p) { currentPage = p; renderTable(); }
+function changePageSize() { const sel = document.getElementById('pageSize'); if (sel) pageSize = parseInt(sel.value); currentPage = 1; renderTable(); }
+
+function renderKBModelTags() {
+  const el = document.getElementById('kbModelTags');
+  if (!el) return;
+  el.innerHTML = Object.keys(KB_MODEL_NAMES).map(m =>
+    '<span class="model-tag' + (m === currentKBModel ? ' active' : '') + '" data-model="' + m + '" onclick="filterKBByModel(\'' + m + '\')">' + KB_MODEL_NAMES[m] + '</span>'
+  ).join('');
+}
+function filterKBByCategory(cat) {
+  currentKBCat = cat;
+  document.querySelectorAll('#kbCatTags .cat-tag').forEach(tag => {
+    tag.classList.toggle('active', tag.dataset.kbcat === cat);
+  });
+  applyKBFilters();
+}
+function filterKBByModel(model) {
+  currentKBModel = model;
+  document.querySelectorAll('#kbModelTags .model-tag').forEach(tag => {
+    tag.classList.toggle('active', tag.dataset.model === model);
+  });
+  applyKBFilters();
+}
+function handleKBSearch(value) {
+  clearTimeout(kbSearchDebounceTimer);
+  kbSearchDebounceTimer = setTimeout(() => {
+    kbSearchTerm = value || '';
+    applyKBFilters();
+  }, 220);
+}
+function applyKBFilters() {
+  hideTooltip();
+  let result = knowledgeBase;
+  if (currentKBCat !== 'all') result = result.filter(k => k.category === currentKBCat);
+  if (currentKBModel !== 'all') result = result.filter(k => k.model === currentKBModel || k.model === 'ALL');
+  if (kbSearchTerm && kbSearchTerm.trim()) {
+    result = result.map(k => Object.assign({}, k, { _score: calcKBRelevance(kbSearchTerm, k) }))
+      .filter(k => k._score > 0).sort((a, b) => b._score - a._score);
+  } else {
+    result = result.map(k => Object.assign({}, k, { _score: 0 }));
+    sortKBRecordsInPlace(result);
+  }
+  kbFiltered = result;
+  kbCurrentPage = 1;
+  renderKBTable();
+  updateKBCatBadges();
+  renderSmartJudgmentKB(kbSearchTerm, result.filter(k => k._score > 0));
+}
+function sortKBRecordsInPlace(arr) {
+  arr.sort((a, b) => {
+    let va = a[kbSortField] || '', vb = b[kbSortField] || '';
+    if (kbSortField === 'id') {
+      const ma = String(va).match(/(\d+)$/), mb = String(vb).match(/(\d+)$/);
+      va = ma ? parseInt(ma[1]) : 0; vb = mb ? parseInt(mb[1]) : 0;
+    }
+    if (va < vb) return kbSortOrder === 'asc' ? -1 : 1;
+    if (va > vb) return kbSortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
+}
+function sortKBBy(field) {
+  if (kbSortField === field) kbSortOrder = kbSortOrder === 'asc' ? 'desc' : 'asc';
+  else { kbSortField = field; kbSortOrder = 'asc'; }
+  updateSortIndicators('kb');
+  applyKBFilters();
+}
+function renderKBTable() {
+  hideTooltip();
+  renderKBModelTags();
+  const start = (kbCurrentPage - 1) * kbPageSize;
+  const end = start + kbPageSize;
+  const pageData = kbFiltered.slice(start, end);
+  const html = pageData.map(k => {
+    const catName = KB_CAT_NAMES[k.category] || k.category;
+    const catClass = 'kb-' + (k.category || 'reference');
+    const sourceText = k.source ? escapeHtml(truncate(k.source, 30)) : '<span style="color:var(--text-tertiary);">-</span>';
+    return '<tr data-id="' + k.id + '"' +
+      ' onmouseenter="showKBTooltip(event, \'' + k.id + '\')"' +
+      ' onmousemove="moveTooltip(event)"' +
+      ' onmouseleave="hideTooltip()">' +
+      '<td class="col-id">' + escapeHtml(k.id) + '</td>' +
+      '<td class="col-cat"><span class="cell-cat ' + catClass + '">' + catName + '</span></td>' +
+      '<td class="col-model"><span class="model-badge">' + escapeHtml(k.model || 'ALL') + '</span></td>' +
+      '<td class="col-keyword">' + escapeHtml(k.title || '') + '</td>' +
+      '<td class="col-question"><div class="text-ellipsis">' + escapeHtml(k.summary || '') + '</div></td>' +
+      '<td class="col-content"><div class="text-ellipsis">' + escapeHtml(k.content || '') + '</div></td>' +
+      '<td class="col-file">' + sourceText + '</td>' +
+      '<td class="col-action"><div class="action-btns">' +
+      '<button class="btn-text" onclick="event.stopPropagation();viewKBRecord(\'' + k.id + '\')">查看</button>' +
+      '<button class="btn-text" onclick="event.stopPropagation();editKBRecord(\'' + k.id + '\')">编辑</button>' +
+      '</div></td></tr>';
+  }).join('');
+  const tbody = document.getElementById('kbTableBody');
+  if (tbody) tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-tertiary);">暂无知识内容</td></tr>';
+  updateKBPagination();
+}
+function updateKBPagination() {
+  const total = kbFiltered.length;
+  const totalPages = Math.ceil(total / kbPageSize) || 1;
+  const start = total === 0 ? 0 : (kbCurrentPage - 1) * kbPageSize + 1;
+  const end = Math.min(kbCurrentPage * kbPageSize, total);
+  const info = document.getElementById('kbPaginationInfo');
+  if (info) info.textContent = '显示 ' + start + '-' + end + ' 条，共 ' + total + ' 条';
+  const prev = document.getElementById('kbPrevBtn');
+  const next = document.getElementById('kbNextBtn');
+  if (prev) prev.disabled = kbCurrentPage <= 1;
+  if (next) next.disabled = kbCurrentPage >= totalPages;
+  let startPage = Math.max(1, kbCurrentPage - 2);
+  let endPage = Math.min(totalPages, startPage + 4);
+  if (endPage - startPage + 1 < 5) startPage = Math.max(1, endPage - 4);
+  const pageNums = document.getElementById('kbPageNumbers');
+  if (pageNums) {
+    let html = '';
+    for (let i = startPage; i <= endPage; i++) {
+      html += '<button class="page-btn ' + (i === kbCurrentPage ? 'active' : '') + '" onclick="goToKBPage(' + i + ')">' + i + '</button>';
+    }
+    pageNums.innerHTML = html;
+  }
+}
+function prevKBPage() { if (kbCurrentPage > 1) { kbCurrentPage--; renderKBTable(); } }
+function nextKBPage() { const totalPages = Math.ceil(kbFiltered.length / kbPageSize); if (kbCurrentPage < totalPages) { kbCurrentPage++; renderKBTable(); } }
+function goToKBPage(p) { kbCurrentPage = p; renderKBTable(); }
+function changeKBPageSize() { const sel = document.getElementById('kbPageSize'); if (sel) kbPageSize = parseInt(sel.value); kbCurrentPage = 1; renderKBTable(); }
+
+function renderTrash() {
+  hideTooltip();
+  const trashed = trashedRecords().sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+  const html = trashed.map(r => {
+    const remainDays = daysUntil(r.deletedAt);
+    const remainText = remainDays > 0 ? (remainDays + ' 天后彻底删除') : '即将清理';
+    return '<tr data-id="' + r.id + '">' +
+      '<td class="col-id">' + escapeHtml(r.id) + '</td>' +
+      '<td class="col-cat"><span class="cell-cat ' + r.category + '">' + (CAT_SHORT[r.category] || '') + '</span></td>' +
+      '<td class="col-model"><span class="model-badge">' + escapeHtml(r.model || 'ALL') + '</span></td>' +
+      '<td class="col-keyword">' + escapeHtml(r.keyword || '') + '</td>' +
+      '<td class="col-conclusion"><div class="text-ellipsis">' + escapeHtml(r.conclusion || '') + '</div></td>' +
+      '<td><div style="font-size:12px;color:var(--text-secondary);">' + formatDateTime(r.deletedAt) + '</div>' +
+        '<div style="font-size:11px;color:var(--text-tertiary);">' + remainText + '</div></td>' +
+      '<td class="col-action"><div class="action-btns">' +
+      '<button class="btn-text" onclick="restoreRecord(\'' + r.id + '\')">恢复</button>' +
+      '<button class="btn-text danger" onclick="permanentDelete(\'' + r.id + '\')">彻底删除</button>' +
+      '</div></td></tr>';
+  }).join('');
+  const tbody = document.getElementById('trashTableBody');
+  if (tbody) tbody.innerHTML = html || '<tr><td colspan="7" style="text-align:center;padding:60px;color:var(--text-tertiary);">回收站为空</td></tr>';
+  const tb = document.getElementById('trash-badge');
+  if (tb) tb.textContent = trashed.length;
+}
+function restoreRecord(id) {
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  r.deletedAt = null;
+  r.updatedAt = new Date().toISOString();
+  if (!saveData()) return;
+  updateBadges(); renderTrash(); applyFilters();
+  showToast('已恢复：' + id, 'success');
+}
+function permanentDelete(id) {
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  deleting = { type: 'exp-permanent', id: id, permanent: true };
+  const header = document.getElementById('deleteModalHeader');
+  const msg = document.getElementById('deleteModalMessage');
+  const footer = document.getElementById('deleteModalFooter');
+  if (header) header.textContent = '彻底删除';
+  if (msg) msg.innerHTML = '确定要<b style="color:var(--danger);">彻底删除</b> ' + escapeHtml(id) + '（' + escapeHtml(r.keyword || '') + '）吗？<br><span style="color:var(--danger);">此操作不可恢复！</span>';
+  if (footer) footer.innerHTML = '<button class="btn" onclick="closeDeleteModal()">取消</button><button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" onclick="confirmDelete()">彻底删除</button>';
+  document.getElementById('deleteModal')?.classList.add('open');
+}
+function clearTrash() {
+  const trashed = trashedRecords();
+  if (trashed.length === 0) { showToast('回收站已为空', 'info'); return; }
+  deleting = { type: 'trash-clear', id: null, permanent: true };
+  const header = document.getElementById('deleteModalHeader');
+  const msg = document.getElementById('deleteModalMessage');
+  const footer = document.getElementById('deleteModalFooter');
+  if (header) header.textContent = '清空回收站';
+  if (msg) msg.innerHTML = '确定要清空回收站吗？<br>将永久删除 <b>' + trashed.length + '</b> 条记录，<span style="color:var(--danger);">此操作不可恢复！</span>';
+  if (footer) footer.innerHTML = '<button class="btn" onclick="closeDeleteModal()">取消</button><button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" onclick="confirmDelete()">清空</button>';
+  document.getElementById('deleteModal')?.classList.add('open');
+}
+
+function renderEntityChipsHtml(entities, max) {
+  if (!entities || entities.length === 0) return '';
+  const list = entities.slice(0, max || 5);
+  const more = entities.length - list.length;
+  let html = '';
+  for (const e of list) {
+    const key = e.type + ':' + e.value;
+    html += '<span class="entity-chip ' + e.type + '" onclick="event.stopPropagation();filterByEntity(\'' + escapeAttr(key) + '\')" title="点击筛选">' + escapeHtml(e.display) + '</span>';
+  }
+  if (more > 0) html += '<span class="entity-chip more">+' + more + '</span>';
+  return html;
+}
+
+/* ==================== 悬浮气泡：显示 + 边界避让定位 ==================== */
+
+function showTooltip(e, id) {
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  rememberPointer(e);
+  clearTimeout(tooltipTimer);
+  tooltipTimer = setTimeout(() => {
+    const tip = document.getElementById('rowTooltip');
+    if (!tip) return;
+    tip.removeAttribute('data-kbcat');
+    tip.setAttribute('data-cat', r.category);
+    const entities = getRecordEntities(r);
+    tip.innerHTML = '<div class="tip-bar"></div>' +
+      '<div class="tip-header"><span class="tip-title">' + escapeHtml(r.keyword) + '</span><span class="tip-id">#' + escapeHtml(r.id) + '</span></div>' +
+      '<div class="tip-meta"><span><span class="cell-cat ' + r.category + '" style="font-size:11px;padding:2px 10px;">' + (CAT_FULL[r.category] || '') + '</span></span><span><span class="meta-dot"></span>机型：' + escapeHtml(r.model) + '</span></div>' +
+      (entities.length > 0 ? '<div class="tip-meta" style="border-top:none;padding-top:0;margin-top:-6px;">' + renderEntityChipsHtml(entities, 6) + '</div>' : '') +
+      '<div class="tip-body">' +
+      '<div class="tip-section"><div class="tip-label">问题描述</div><div class="tip-value">' + escapeHtml(r.question) + '</div></div>' +
+      '<div class="tip-section"><div class="tip-label">评估结论</div><div class="tip-value">' + escapeHtml(r.conclusion) + '</div></div>' +
+      (r.background ? '<div class="tip-section"><div class="tip-label">背景</div><div class="tip-value">' + escapeHtml(r.background) + '</div></div>' : '') +
+      (r.basis ? '<div class="tip-section"><div class="tip-label">依据</div><div class="tip-value">' + escapeHtml(r.basis) + '</div></div>' : '') +
+      (r.keypoint ? '<div class="tip-section"><div class="tip-label">关键点</div><div class="tip-value">' + escapeHtml(r.keypoint) + '</div></div>' : '') +
+      (r.remark ? '<div class="tip-section"><div class="tip-label">备注</div><div class="tip-value">' + escapeHtml(r.remark) + '</div></div>' : '') +
+      '</div>';
+    tip.style.left = '0px';
+    tip.style.top = '0px';
+    tip.classList.add('show');
+    positionTooltip();
+  }, 180);
+}
+
+function showKBTooltip(e, id) {
+  const k = knowledgeBase.find(x => x.id === id);
+  if (!k) return;
+  rememberPointer(e);
+  clearTimeout(tooltipTimer);
+  tooltipTimer = setTimeout(() => {
+    const catName = KB_CAT_NAMES[k.category] || k.category;
+    const tip = document.getElementById('rowTooltip');
+    if (!tip) return;
+    tip.removeAttribute('data-cat');
+    tip.setAttribute('data-kbcat', k.category);
+    tip.innerHTML = '<div class="tip-bar"></div>' +
+      '<div class="tip-header"><span class="tip-title">' + escapeHtml(k.title || '') + '</span><span class="tip-id">#' + escapeHtml(k.id) + '</span></div>' +
+      '<div class="tip-meta"><span><span class="cell-cat kb-' + (k.category || 'reference') + '" style="font-size:11px;padding:2px 10px;">' + catName + '</span></span><span><span class="meta-dot"></span>机型：' + escapeHtml(k.model || 'ALL') + '</span></div>' +
+      '<div class="tip-body">' +
+      '<div class="tip-section"><div class="tip-label">摘要</div><div class="tip-value">' + escapeHtml(k.summary || '') + '</div></div>' +
+      (k.content ? '<div class="tip-section"><div class="tip-label">正文内容</div><div class="tip-value">' + escapeHtml(k.content) + '</div></div>' : '') +
+      (k.source ? '<div class="tip-section"><div class="tip-label">来源</div><div class="tip-value">' + escapeHtml(k.source) + '</div></div>' : '') +
+      '</div>';
+    tip.style.left = '0px';
+    tip.style.top = '0px';
+    tip.classList.add('show');
+    positionTooltip();
+  }, 180);
+}
+
+function rememberPointer(e) {
+  if (e && typeof e.clientX === 'number' && typeof e.clientY === 'number') {
+    lastPointer = { x: e.clientX, y: e.clientY };
+  }
+}
+
+function positionTooltip() {
+  const tip = document.getElementById('rowTooltip');
+  if (!tip || !tip.classList.contains('show')) return;
+  const PAD = 12;
+  const OFFSET = 18;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const tw = tip.offsetWidth;
+  const th = tip.offsetHeight;
+  const px = lastPointer.x;
+  const py = lastPointer.y;
+
+  let x = px + OFFSET;
+  let y = py + OFFSET;
+
+  if (x + tw + PAD > vw) x = px - tw - OFFSET;
+  if (x < PAD) x = PAD;
+  if (x + tw + PAD > vw) x = Math.max(PAD, vw - tw - PAD);
+
+  if (y + th + PAD > vh) y = py - th - OFFSET;
+  if (y < PAD) y = PAD;
+  if (y + th + PAD > vh) y = Math.max(PAD, vh - th - PAD);
+
+  tip.style.left = Math.round(x) + 'px';
+  tip.style.top = Math.round(y) + 'px';
+}
+
+function moveTooltip(e) {
+  rememberPointer(e);
+  if (tooltipRafPending) return;
+  tooltipRafPending = true;
+  requestAnimationFrame(() => {
+    tooltipRafPending = false;
+    positionTooltip();
+  });
+}
+
+function hideTooltip() {
+  clearTimeout(tooltipTimer);
+  tooltipRafPending = false;
+  const tip = document.getElementById('rowTooltip');
+  if (tip) tip.classList.remove('show');
+}
+
+document.addEventListener('scroll', function() { hideTooltip(); }, true);
+window.addEventListener('resize', function() { hideTooltip(); });
+
+/* ==================================================================== */
+
+function getRelatedRecords(record) {
+  const active = activeRecords();
+  const explicit = (record.relatedIds || []).map(id => active.find(r => r.id === id)).filter(Boolean);
+  const explicitIds = new Set(explicit.map(r => r.id));
+  const recordEnts = new Set(getRecordEntities(record).map(e => e.key));
+  const auto = active
+    .filter(r => r.id !== record.id && !explicitIds.has(r.id))
+    .map(r => {
+      let score = 0;
+      if (r.category === record.category) score += 2;
+      if (r.model === record.model || r.model === 'ALL' || record.model === 'ALL') score += 1;
+      const rEnts = getRecordEntities(r);
+      let sharedEnts = 0;
+      for (const e of rEnts) { if (recordEnts.has(e.key)) sharedEnts++; }
+      score += sharedEnts * 1.5;
+      const k1 = (record.keyword || '').toLowerCase();
+      const k2 = (r.keyword || '').toLowerCase();
+      const tokens1 = new Set();
+      for (let i = 0; i < k1.length - 1; i++) tokens1.add(k1.substring(i, i+2));
+      let overlap = 0;
+      for (let i = 0; i < k2.length - 1; i++) {
+        if (tokens1.has(k2.substring(i, i+2))) overlap++;
+      }
+      score += overlap * 0.5;
+      if (r.file && r.file === record.file) score += 0.5;
+      return { record: r, score };
+    })
+    .filter(x => x.score >= 2.5)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, Math.max(0, 5 - explicit.length))
+    .map(x => x.record);
+  return { explicit, auto };
+}
+
+function renderRelatedSection(record) {
+  const { explicit, auto } = getRelatedRecords(record);
+  if (explicit.length === 0 && auto.length === 0) {
+    return '<div class="detail-section"><div class="detail-label">相关案例</div><div class="related-empty">暂无相关案例</div></div>';
+  }
+  let html = '<div class="detail-section"><div class="detail-label">相关案例</div><div class="related-list">';
+  for (const r of explicit) {
+    html += '<div class="related-item" onclick="viewRecord(\'' + r.id + '\')">' +
+      '<span class="related-id">' + escapeHtml(r.id) + '</span>' +
+      '<div class="related-content"><div class="related-title">' + escapeHtml(r.keyword || '') + '</div>' +
+      '<div class="related-conclusion">' + escapeHtml(truncate(r.conclusion || '', 80)) + '</div></div>' +
+      '<span class="related-badge">手动关联</span></div>';
+  }
+  for (const r of auto) {
+    html += '<div class="related-item" onclick="viewRecord(\'' + r.id + '\')">' +
+      '<span class="related-id">' + escapeHtml(r.id) + '</span>' +
+      '<div class="related-content"><div class="related-title">' + escapeHtml(r.keyword || '') + '</div>' +
+      '<div class="related-conclusion">' + escapeHtml(truncate(r.conclusion || '', 80)) + '</div></div>' +
+      '<span class="related-badge" style="background:var(--warning-bg);color:var(--warning);">相似推荐</span></div>';
+  }
+  html += '</div></div>';
+  return html;
+}
+
+function conclusionPolarity(text) {
+  if (!text) return 'unknown';
+  const t = text.toLowerCase();
+  const hasCondition = /(如果|若|当|假如|取决于|视.{0,6}而定)/.test(t);
+  const hasAccept = /(接受|可以|能够|可接受|允许|可以放行|能放行|满足|认可)/.test(t);
+  const hasReject = /(不接受|不可|不能|拒绝|禁止|不得|不应|不认可)/.test(t);
+  if (hasCondition && hasAccept && hasReject) return 'conditional';
+  if (hasReject) return 'reject';
+  if (hasAccept) return 'accept';
+  if (/(澄清|确认|核实|需要厂家|厂家澄清|向上级)/.test(t)) return 'pending';
+  return 'unknown';
+}
+
+function detectConflicts(newRecord) {
+  const active = activeRecords().filter(r => r.id !== newRecord.id);
+  const newPol = conclusionPolarity(newRecord.conclusion);
+  if (newPol === 'unknown' || newPol === 'conditional') return [];
+  const conflicts = [];
+  for (const r of active) {
+    const pol = conclusionPolarity(r.conclusion);
+    if (pol === 'unknown' || pol === 'conditional' || pol === newPol) continue;
+    const sim = calcRecordSimilarity(newRecord, r);
+    if (sim >= CONFLICT_SIMILARITY_THRESHOLD) {
+      conflicts.push({ record: r, similarity: sim, polarity: pol });
+    }
+  }
+  return conflicts.sort((a, b) => b.similarity - a.similarity).slice(0, 5);
+}
+
+function calcRecordSimilarity(a, b) {
+  const ka = (a.keyword || '').toLowerCase();
+  const kb = (b.keyword || '').toLowerCase();
+  const kwLen = Math.min(ka.length, kb.length);
+  if (kwLen < CONFLICT_MIN_KEYWORD_LEN) return 0;
+  const setA = new Set();
+  for (let i = 0; i < ka.length - 1; i++) setA.add(ka.substring(i, i+2));
+  let overlap = 0;
+  for (let i = 0; i < kb.length - 1; i++) {
+    if (setA.has(kb.substring(i, i+2))) overlap++;
+  }
+  const kwSim = ka.length > 0 && kb.length > 0 ? Math.min(1, overlap / Math.min(ka.length - 1, kb.length - 1)) : 0;
+  const qa = (a.question || '').toLowerCase();
+  const qb = (b.question || '').toLowerCase();
+  const setQ = new Set();
+  for (let i = 0; i < qa.length - 1; i++) setQ.add(qa.substring(i, i+2));
+  let qOverlap = 0;
+  for (let i = 0; i < qb.length - 1; i++) {
+    if (setQ.has(qb.substring(i, i+2))) qOverlap++;
+  }
+  const qSim = qa.length > 0 && qb.length > 0 ? Math.min(1, qOverlap / Math.min(qa.length - 1, qb.length - 1)) : 0;
+  const entA = new Set(getRecordEntities(a).map(e => e.key));
+  const entB = getRecordEntities(b);
+  let sharedEnt = 0;
+  for (const e of entB) if (entA.has(e.key)) sharedEnt++;
+  const entSim = Math.min(1, sharedEnt * 0.4);
+  return kwSim * 0.4 + qSim * 0.4 + entSim * 0.2;
+}
+
+function showConflictModal(conflicts, newRecord) {
+  const body = document.getElementById('conflictBody');
+  const subtitle = document.getElementById('conflictSubtitle');
+  if (subtitle) subtitle.textContent = '发现 ' + conflicts.length + ' 条相似案例的结论与之相反';
+  let html = '<div class="conflict-my">' +
+    '<div class="conflict-my-label">你正在保存的结论</div>' +
+    '<div class="conflict-my-text">' + escapeHtml(newRecord.conclusion) + '</div>' +
+    '</div>' +
+    '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">以下相似案例的结论与之相反：</div>';
+  for (const c of conflicts) {
+    const simPct = Math.round(c.similarity * 100);
+    html += '<div class="conflict-item">' +
+      '<div class="conflict-item-id">' + escapeHtml(c.record.id) + ' · ' + escapeHtml(c.record.keyword || '') + ' · 相似度 ' + simPct + '%</div>' +
+      (c.record.question ? '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px;">问题：' + escapeHtml(truncate(c.record.question, 90)) + '</div>' : '') +
+      '<div class="conflict-item-conclusion">' + escapeHtml(c.record.conclusion || '') + '</div>' +
+      (c.record.basis ? '<div style="font-size:11px;color:var(--text-tertiary);margin-top:6px;">依据：' + escapeHtml(truncate(c.record.basis, 80)) + '</div>' : '') +
+      '</div>';
+  }
+  if (body) body.innerHTML = html;
+  document.getElementById('conflictModal')?.classList.add('open');
+}
+function confirmConflictSave() {
+  document.getElementById('conflictModal')?.classList.remove('open');
+  if (pendingConflictSave) { pendingConflictSave(); pendingConflictSave = null; }
+}
+function cancelConflictSave() {
+  document.getElementById('conflictModal')?.classList.remove('open');
+  pendingConflictSave = null;
+}
+
+function viewRecord(id) {
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  hideTooltip();
+  drawerMode = 'view';
+  editingId = id;
+  const title = document.getElementById('drawerTitle');
+  if (title) title.textContent = '查看详情';
+  const body = document.getElementById('drawerBody');
+  if (body) body.innerHTML = renderDetailView(r);
+  const footer = document.getElementById('drawerFooter');
+  if (footer) footer.innerHTML = '<button class="btn" onclick="closeDrawer()">关闭</button><button class="btn btn-primary" onclick="editRecord(\'' + r.id + '\')">编辑</button>';
+  openDrawer();
+}
+
+function renderDetailView(r) {
+  const entities = getRecordEntities(r);
+  const statusLabel = STATUS_LABELS[r.status] || r.status || '已确认';
+  return '<div class="detail-meta">' +
+    '<div class="meta-item"><span class="meta-label">编号</span><span class="meta-value">' + escapeHtml(r.id) + '</span></div>' +
+    '<div class="meta-item"><span class="meta-label">类别</span><span class="meta-value">' + (CAT_FULL[r.category] || '') + '</span></div>' +
+    '<div class="meta-item"><span class="meta-label">适用机型</span><span class="meta-value">' + escapeHtml(r.model) + '</span></div>' +
+    '<div class="meta-item"><span class="meta-label">状态</span><span class="meta-value">' + getStatusDot(r.status) + statusLabel + '</span></div>' +
+    '</div>' +
+    (entities.length > 0 ? '<div class="detail-section"><div class="detail-label">关联实体</div><div style="display:flex;flex-wrap:wrap;gap:6px;">' + renderEntityChipsHtml(entities, 20) + '</div></div>' : '') +
+    '<div class="detail-section"><div class="detail-label">关键词</div><div class="detail-value">' + escapeHtml(r.keyword) + '</div></div>' +
+    '<div class="detail-section"><div class="detail-label">问题描述</div><div class="detail-value">' + escapeHtml(r.question) + '</div></div>' +
+    '<div class="detail-section"><div class="detail-label">评估结论</div><div class="detail-value">' + escapeHtml(r.conclusion) + '</div></div>' +
+    (r.background ? '<div class="detail-section"><div class="detail-label">背景描述</div><div class="detail-value">' + escapeHtml(r.background) + '</div></div>' : '') +
+    (r.basis ? '<div class="detail-section"><div class="detail-label">依据</div><div class="detail-value">' + escapeHtml(r.basis) + '</div></div>' : '') +
+    (r.keypoint ? '<div class="detail-section"><div class="detail-label">关键点 / 难点</div><div class="detail-value">' + escapeHtml(r.keypoint) + '</div></div>' : '') +
+    (r.remark ? '<div class="detail-section"><div class="detail-label">备注</div><div class="detail-value">' + escapeHtml(r.remark) + '</div></div>' : '') +
+    renderRelatedSection(r) +
+    '<div class="detail-section" style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border-light);"><div style="font-size:11px;color:var(--text-tertiary);">最后更新：' + formatDateTime(r.updatedAt) + '</div></div>';
+}
+
+function editRecord(id) {
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  hideTooltip();
+  drawerMode = 'edit';
+  editingId = id;
+  const title = document.getElementById('drawerTitle');
+  if (title) title.textContent = '编辑条目';
+  const body = document.getElementById('drawerBody');
+  if (body) body.innerHTML = renderEditForm(r);
+  const footer = document.getElementById('drawerFooter');
+  if (footer) footer.innerHTML = '<button class="btn" style="background:var(--danger);border-color:var(--danger);color:white;" onclick="deleteRecord(\'' + r.id + '\')">删除</button><div style="flex:1"></div><button class="btn" onclick="viewRecord(\'' + r.id + '\')">取消</button><button class="btn btn-primary" onclick="saveEdit()">保存</button>';
+  openDrawer();
+  refreshRelatedSuggestions();
+}
+
+function openAddDrawer() {
+  hideTooltip();
+  drawerMode = 'add';
+  editingId = null;
+  const newId = getNextId();
+  const title = document.getElementById('drawerTitle');
+  if (title) title.textContent = '新增条目';
+  const body = document.getElementById('drawerBody');
+  if (body) body.innerHTML = renderEditForm({ id: newId, category: 'material', model: 'ALL', file: '', keyword: '', question: '', conclusion: '', background: '', basis: '', keypoint: '', remark: '', status: 'draft', relatedIds: [] });
+  const footer = document.getElementById('drawerFooter');
+  if (footer) footer.innerHTML = '<button class="btn" onclick="closeDrawer()">取消</button><button class="btn btn-primary" onclick="saveAdd()">保存新增</button>';
+  openDrawer();
+  refreshRelatedSuggestions();
+}
+
+function renderEditForm(r) {
+  const readonlyAttr = drawerMode === 'edit' ? 'readonly style="background:var(--bg);cursor:not-allowed;"' : '';
+  const fileOptions = ['', '合格证', '挂签', 'NIS', '8130-3', 'Form 1', 'AAC-038', '工卡', 'AD/SB', '故障单'];
+  const fileHtml = fileOptions.map(f => {
+    const label = f === '' ? '无' : f;
+    const sel = (r.file === f) ? ' selected' : '';
+    return '<option value="' + escapeAttr(f) + '"' + sel + '>' + escapeHtml(label) + '</option>';
+  }).join('');
+  const modelOptions = ['ALL', 'PW1100G', 'V2500', 'PW4000', 'RB211', 'GEnx'];
+  const modelHtml = modelOptions.map(m => '<option value="' + m + '"' + (r.model === m ? ' selected' : '') + '>' + m + '</option>').join('');
+  const catOptions = ['material', 'procedure', 'engineering', 'test_run'];
+  const catHtml = catOptions.map(c => '<option value="' + c + '"' + (r.category === c ? ' selected' : '') + '>' + CAT_FULL[c] + '</option>').join('');
+  const statusOptions = ['draft', 'review', 'confirmed', 'archived'];
+  const statusHtml = statusOptions.map(s => '<option value="' + s + '"' + (r.status === s ? ' selected' : '') + '>' + STATUS_LABELS[s] + '</option>').join('');
+  const relatedStr = (r.relatedIds || []).join(', ');
+  return '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">编号 <span class="required">*</span></label><input type="text" class="form-input" id="f-id" value="' + escapeAttr(r.id) + '" ' + readonlyAttr + '></div>' +
+    '<div class="form-group"><label class="form-label">类别 <span class="required">*</span></label><select class="form-select" id="f-category">' + catHtml + '</select></div></div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">适用机型</label><select class="form-select" id="f-model">' + modelHtml + '</select></div>' +
+    '<div class="form-group"><label class="form-label">文件</label><select class="form-select" id="f-file">' + fileHtml + '</select></div></div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">状态</label><select class="form-select" id="f-status">' + statusHtml + '</select></div>' +
+    '<div class="form-group"><label class="form-label">复核日期（可选）</label><input type="text" class="form-input" id="f-reviewDueAt" value="' + escapeAttr(r.reviewDueAt || '') + '" placeholder="YYYY-MM-DD"></div></div>' +
+    '<div class="form-group"><label class="form-label">关键词 <span class="required">*</span></label><input type="text" class="form-input" id="f-keyword" value="' + escapeAttr(r.keyword) + '" oninput="refreshRelatedSuggestions()"></div>' +
+    '<div class="form-group"><label class="form-label">问题描述 <span class="required">*</span></label><textarea class="form-textarea" id="f-question" oninput="refreshRelatedSuggestions()">' + escapeHtml(r.question) + '</textarea></div>' +
+    '<div class="form-group"><label class="form-label">评估结论 <span class="required">*</span></label><textarea class="form-textarea" id="f-conclusion">' + escapeHtml(r.conclusion) + '</textarea>' +
+    '<div class="form-hint">保存时会自动检测与相似案例的结论冲突</div></div>' +
+    '<div class="form-group"><label class="form-label">背景描述</label><textarea class="form-textarea" id="f-background">' + escapeHtml(r.background) + '</textarea></div>' +
+    '<div class="form-group"><label class="form-label">依据</label><textarea class="form-textarea" id="f-basis">' + escapeHtml(r.basis) + '</textarea></div>' +
+    '<div class="form-group"><label class="form-label">关键点 / 难点</label><textarea class="form-textarea" id="f-keypoint">' + escapeHtml(r.keypoint) + '</textarea></div>' +
+    '<div class="form-group"><label class="form-label">备注</label><textarea class="form-textarea" id="f-remark">' + escapeHtml(r.remark) + '</textarea></div>' +
+    '<div class="form-group"><label class="form-label">关联条目编号</label>' +
+    '<div class="related-suggestions" id="f-related-suggestions"></div>' +
+    '<input type="text" class="form-input" id="f-related" value="' + escapeAttr(relatedStr) + '" placeholder="例如：EXP-003, EXP-042" oninput="refreshRelatedSuggestions()">' +
+    '<div class="form-hint">点击上方推荐标签可快速加入。</div></div>';
+}
+
+function refreshRelatedSuggestions() {
+  const container = document.getElementById('f-related-suggestions');
+  const relatedInput = document.getElementById('f-related');
+  const keywordInput = document.getElementById('f-keyword');
+  const questionInput = document.getElementById('f-question');
+  if (!container) return;
+  const currentRelated = (relatedInput?.value || '').split(/[,，\s]+/).filter(Boolean);
+  const selectedSet = new Set(currentRelated);
+  const kw = (keywordInput?.value || '').trim();
+  const q = (questionInput?.value || '').trim();
+  if (!kw && !q) { container.innerHTML = ''; return; }
+  const draft = {
+    id: editingId || '__draft__',
+    keyword: kw, question: q, conclusion: '',
+    category: document.getElementById('f-category')?.value || 'material',
+    model: document.getElementById('f-model')?.value || 'ALL',
+    file: document.getElementById('f-file')?.value || '',
+    basis: '', background: '', keypoint: '', remark: '', updatedAt: 'draft'
+  };
+  const active = activeRecords().filter(r => r.id !== draft.id);
+  const draftEnts = new Set(getRecordEntities(draft).map(e => e.key));
+  const candidates = active.map(r => {
+    let score = 0;
+    if (r.category === draft.category) score += 2;
+    if (r.model === draft.model || r.model === 'ALL' || draft.model === 'ALL') score += 1;
+    const rEnts = getRecordEntities(r);
+    let sharedEnts = 0;
+    for (const e of rEnts) if (draftEnts.has(e.key)) sharedEnts++;
+    score += sharedEnts * 1.5;
+    const k1 = (draft.keyword || '').toLowerCase();
+    const k2 = (r.keyword || '').toLowerCase();
+    const t1 = new Set();
+    for (let i = 0; i < k1.length - 1; i++) t1.add(k1.substring(i, i+2));
+    let overlap = 0;
+    for (let i = 0; i < k2.length - 1; i++) if (t1.has(k2.substring(i, i+2))) overlap++;
+    score += overlap * 0.5;
+    const q1 = (draft.question || '').toLowerCase();
+    const q2 = (r.question || '').toLowerCase();
+    const tq = new Set();
+    for (let i = 0; i < q1.length - 1; i++) tq.add(q1.substring(i, i+2));
+    let qOv = 0;
+    for (let i = 0; i < q2.length - 1; i++) if (tq.has(q2.substring(i, i+2))) qOv++;
+    score += qOv * 0.3;
+    if (r.file && r.file === draft.file) score += 0.5;
+    return { r, score };
+  }).filter(x => x.score >= 2.5).sort((a, b) => b.score - a.score).slice(0, 5).map(x => x.r);
+  if (candidates.length === 0) { container.innerHTML = ''; return; }
+  container.innerHTML = candidates.map(r => {
+    const selected = selectedSet.has(r.id) ? ' selected' : '';
+    return '<span class="related-suggestion' + selected + '" data-id="' + r.id + '" onclick="toggleRelatedSuggestion(\'' + r.id + '\')">' +
+      '<span class="rs-id">' + escapeHtml(r.id) + '</span>' +
+      '<span class="rs-kw">' + escapeHtml(truncate(r.keyword || '', 14)) + '</span>' +
+      '</span>';
+  }).join('');
+}
+function toggleRelatedSuggestion(id) {
+  const input = document.getElementById('f-related');
+  if (!input) return;
+  const current = input.value.split(/[,，\s]+/).filter(Boolean);
+  const idx = current.indexOf(id);
+  if (idx >= 0) current.splice(idx, 1);
+  else current.push(id);
+  input.value = current.join(', ');
+  refreshRelatedSuggestions();
+}
+
+function getFormData() {
+  const category = document.getElementById('f-category')?.value || 'material';
+  const relatedRaw = document.getElementById('f-related')?.value?.trim() || '';
+  const relatedIds = relatedRaw.split(/[,，\s]+/).filter(Boolean);
+  return {
+    id: document.getElementById('f-id')?.value?.trim() || '',
+    category: category, categoryName: CAT_FULL[category] || category,
+    model: document.getElementById('f-model')?.value?.trim() || '',
+    file: document.getElementById('f-file')?.value?.trim() || '',
+    status: document.getElementById('f-status')?.value || 'draft',
+    reviewDueAt: document.getElementById('f-reviewDueAt')?.value?.trim() || null,
+    keyword: document.getElementById('f-keyword')?.value?.trim() || '',
+    question: document.getElementById('f-question')?.value?.trim() || '',
+    conclusion: document.getElementById('f-conclusion')?.value?.trim() || '',
+    background: document.getElementById('f-background')?.value?.trim() || '',
+    basis: document.getElementById('f-basis')?.value?.trim() || '',
+    keypoint: document.getElementById('f-keypoint')?.value?.trim() || '',
+    remark: document.getElementById('f-remark')?.value?.trim() || '',
+    relatedIds: relatedIds
+  };
+}
+function getNextId() {
+  const maxId = records.reduce((max, r) => {
+    const m = String(r.id).match(/^EXP-(\d+)$/);
+    const n = m ? parseInt(m[1]) : 0;
+    return n > max ? n : max;
+  }, 0);
+  return 'EXP-' + String(maxId + 1).padStart(3, '0');
+}
+function getNextKBId() {
+  const maxId = knowledgeBase.reduce((max, k) => {
+    const m = String(k.id).match(/^KB-(\d+)$/);
+    const n = m ? parseInt(m[1]) : 0;
+    return n > max ? n : max;
+  }, 0);
+  return 'KB-' + String(maxId + 1).padStart(3, '0');
+}
+function validateForm(data) {
+  if (!data.id) return '编号不能为空';
+  if (!/^[A-Za-z0-9\-_]+$/.test(data.id)) return '编号只能包含字母、数字、-、_';
+  if (!data.keyword) return '关键词不能为空';
+  if (!data.question) return '问题描述不能为空';
+  if (!data.conclusion) return '评估结论不能为空';
+  if (!data.model) return '适用机型不能为空';
+  return null;
+}
+
+function saveEdit() {
+  const data = getFormData();
+  const err = validateForm(data);
+  if (err) { showToast(err, 'error'); return; }
+  const conflicts = detectConflicts(data);
+  const doSave = () => {
+    const idx = records.findIndex(r => r.id === editingId);
+    if (idx >= 0) {
+      records[idx] = Object.assign({}, records[idx], data);
+      records[idx].updatedAt = new Date().toISOString();
+      delete records[idx]._score;
+      if (!saveData()) return;
+      updateBadges(); applyFilters();
+      showToast('保存成功', 'success');
+      viewRecord(editingId);
+    }
+  };
+  if (conflicts.length > 0) { pendingConflictSave = doSave; showConflictModal(conflicts, data); }
+  else doSave();
+}
+
+function saveAdd() {
+  const data = getFormData();
+  const err = validateForm(data);
+  if (err) { showToast(err, 'error'); return; }
+  if (records.find(r => r.id === data.id)) { showToast('编号已存在', 'error'); return; }
+  const conflicts = detectConflicts(data);
+  const doSave = () => {
+    const now = new Date().toISOString();
+    data.createdAt = now; data.updatedAt = now;
+    data.deletedAt = null;
+    records.push(data);
+    if (!saveData()) return;
+    updateBadges(); applyFilters();
+    showToast('新增成功', 'success');
+    closeDrawer();
+  };
+  if (conflicts.length > 0) { pendingConflictSave = doSave; showConflictModal(conflicts, data); }
+  else doSave();
+}
+
+function viewKBRecord(id) {
+  const k = knowledgeBase.find(x => x.id === id);
+  if (!k) return;
+  hideTooltip();
+  const title = document.getElementById('drawerTitle');
+  if (title) title.textContent = '查看知识';
+  const body = document.getElementById('drawerBody');
+  if (body) body.innerHTML = renderKBDetailView(k);
+  const footer = document.getElementById('drawerFooter');
+  if (footer) footer.innerHTML = '<button class="btn" onclick="closeDrawer()">关闭</button><button class="btn btn-primary" onclick="editKBRecord(\'' + k.id + '\')">编辑</button>';
+  openDrawer();
+}
+function renderKBDetailView(k) {
+  const catName = KB_CAT_NAMES[k.category] || k.category;
+  return '<div class="detail-meta">' +
+    '<div class="meta-item"><span class="meta-label">编号</span><span class="meta-value">' + escapeHtml(k.id) + '</span></div>' +
+    '<div class="meta-item"><span class="meta-label">类别</span><span class="meta-value">' + catName + '</span></div>' +
+    '<div class="meta-item"><span class="meta-label">适用机型</span><span class="meta-value">' + escapeHtml(k.model || 'ALL') + '</span></div>' +
+    '</div>' +
+    '<div class="detail-section"><div class="detail-label">标题</div><div class="detail-value">' + escapeHtml(k.title || '') + '</div></div>' +
+    '<div class="detail-section"><div class="detail-label">摘要</div><div class="detail-value">' + escapeHtml(k.summary || '') + '</div></div>' +
+    '<div class="detail-section"><div class="detail-label">正文内容</div><div class="detail-value">' + escapeHtml(k.content || '') + '</div></div>' +
+    (k.source ? '<div class="detail-section"><div class="detail-label">来源</div><div class="detail-value">' + escapeHtml(k.source) + '</div></div>' : '');
+}
+function editKBRecord(id) {
+  const k = knowledgeBase.find(x => x.id === id);
+  if (!k) return;
+  hideTooltip();
+  kbEditingId = id;
+  const title = document.getElementById('drawerTitle');
+  if (title) title.textContent = '编辑知识';
+  const body = document.getElementById('drawerBody');
+  if (body) body.innerHTML = renderKBEditForm(k);
+  const footer = document.getElementById('drawerFooter');
+  if (footer) footer.innerHTML = '<button class="btn" style="background:var(--danger);border-color:var(--danger);color:white;" onclick="deleteKBRecord(\'' + k.id + '\')">删除</button><div style="flex:1"></div><button class="btn" onclick="viewKBRecord(\'' + k.id + '\')">取消</button><button class="btn btn-primary" onclick="saveKBEdit()">保存</button>';
+  openDrawer();
+}
+function renderKBEditForm(k) {
+  const catOptions = ['ad', 'regulation', 'training', 'reference', 'safety'];
+  const catHtml = catOptions.map(c => '<option value="' + c + '"' + (k.category === c ? ' selected' : '') + '>' + KB_CAT_NAMES[c] + '</option>').join('');
+  const modelOptions = ['ALL', 'PW1100G', 'V2500', 'PW4000', 'RB211', 'GEnx'];
+  const modelHtml = modelOptions.map(m => '<option value="' + m + '"' + (k.model === m ? ' selected' : '') + '>' + m + '</option>').join('');
+  return '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">编号</label><input type="text" class="form-input" id="kb-f-id" value="' + escapeAttr(k.id) + '" readonly style="background:var(--bg);cursor:not-allowed;"></div>' +
+    '<div class="form-group"><label class="form-label">类别</label><select class="form-select" id="kb-f-category">' + catHtml + '</select></div></div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">适用机型</label><select class="form-select" id="kb-f-model">' + modelHtml + '</select></div>' +
+    '<div class="form-group"><label class="form-label">更新日期</label><input type="text" class="form-input" id="kb-f-updatedAt" value="' + escapeAttr(k.updatedAt || new Date().toISOString().slice(0,10)) + '"></div></div>' +
+    '<div class="form-group"><label class="form-label">标题</label><input type="text" class="form-input" id="kb-f-title" value="' + escapeAttr(k.title || '') + '"></div>' +
+    '<div class="form-group"><label class="form-label">摘要</label><textarea class="form-textarea" id="kb-f-summary">' + escapeHtml(k.summary || '') + '</textarea></div>' +
+    '<div class="form-group"><label class="form-label">正文内容</label><textarea class="form-textarea" id="kb-f-content" style="min-height:150px;">' + escapeHtml(k.content || '') + '</textarea></div>' +
+    '<div class="form-group"><label class="form-label">来源</label><input type="text" class="form-input" id="kb-f-source" value="' + escapeAttr(k.source || '') + '"></div>';
+}
+function saveKBEdit() {
+  const category = document.getElementById('kb-f-category')?.value || 'reference';
+  const model = document.getElementById('kb-f-model')?.value?.trim() || 'ALL';
+  const title = document.getElementById('kb-f-title')?.value?.trim() || '';
+  const summary = document.getElementById('kb-f-summary')?.value?.trim() || '';
+  const content = document.getElementById('kb-f-content')?.value?.trim() || '';
+  const source = document.getElementById('kb-f-source')?.value?.trim() || '';
+  const updatedAt = document.getElementById('kb-f-updatedAt')?.value?.trim() || new Date().toISOString().slice(0,10);
+  if (!title) { showToast('标题不能为空', 'error'); return; }
+  const idx = knowledgeBase.findIndex(k => k.id === kbEditingId);
+  if (idx >= 0) {
+    knowledgeBase[idx] = Object.assign({}, knowledgeBase[idx], { category, model, title, summary, content, source, updatedAt });
+    delete knowledgeBase[idx]._score;
+    if (!saveKBData()) return;
+    applyKBFilters(); updateKBCounts();
+    showToast('保存成功', 'success');
+    viewKBRecord(kbEditingId);
+  }
+}
+function openAddKB() {
+  hideTooltip();
+  const newId = getNextKBId();
+  kbEditingId = null;
+  const title = document.getElementById('drawerTitle');
+  if (title) title.textContent = '新增知识';
+  const body = document.getElementById('drawerBody');
+  if (body) body.innerHTML = renderKBEditForm({ id: newId, category: 'reference', model: 'ALL', title: '', summary: '', content: '', source: '', updatedAt: new Date().toISOString().slice(0,10) });
+  const footer = document.getElementById('drawerFooter');
+  if (footer) footer.innerHTML = '<button class="btn" onclick="closeDrawer()">取消</button><button class="btn btn-primary" onclick="saveKBAdd()">保存新增</button>';
+  openDrawer();
+}
+function saveKBAdd() {
+  const id = document.getElementById('kb-f-id')?.value?.trim() || '';
+  const category = document.getElementById('kb-f-category')?.value || 'reference';
+  const model = document.getElementById('kb-f-model')?.value?.trim() || 'ALL';
+  const title = document.getElementById('kb-f-title')?.value?.trim() || '';
+  const summary = document.getElementById('kb-f-summary')?.value?.trim() || '';
+  const content = document.getElementById('kb-f-content')?.value?.trim() || '';
+  const source = document.getElementById('kb-f-source')?.value?.trim() || '';
+  const updatedAt = document.getElementById('kb-f-updatedAt')?.value?.trim() || new Date().toISOString().slice(0,10);
+  if (!id) { showToast('编号不能为空', 'error'); return; }
+  if (!title) { showToast('标题不能为空', 'error'); return; }
+  if (knowledgeBase.find(k => k.id === id)) { showToast('编号已存在', 'error'); return; }
+  knowledgeBase.push({ id, category, model, title, summary, content, source, updatedAt });
+  if (!saveKBData()) return;
+  applyKBFilters(); updateKBCounts();
+  closeDrawer();
+  showToast('新增成功', 'success');
+}
+
+function deleteRecord(id) {
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  deleting = { type: 'exp', id: id, permanent: false };
+  const header = document.getElementById('deleteModalHeader');
+  const msg = document.getElementById('deleteModalMessage');
+  const footer = document.getElementById('deleteModalFooter');
+  if (header) header.textContent = '确认删除';
+  if (msg) msg.innerHTML = '确定要删除条目 ' + escapeHtml(id) + '（' + escapeHtml(r.keyword || '') + '）吗？<br><span style="font-size:12px;color:var(--text-tertiary);">删除后可在回收站中 30 天内恢复。</span>';
+  if (footer) footer.innerHTML = '<button class="btn" onclick="closeDeleteModal()">取消</button><button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" onclick="confirmDelete()">删除</button>';
+  document.getElementById('deleteModal')?.classList.add('open');
+}
+function deleteKBRecord(id) {
+  const k = knowledgeBase.find(x => x.id === id);
+  if (!k) return;
+  deleting = { type: 'kb', id: id, permanent: false };
+  const header = document.getElementById('deleteModalHeader');
+  const msg = document.getElementById('deleteModalMessage');
+  const footer = document.getElementById('deleteModalFooter');
+  if (header) header.textContent = '确认删除';
+  if (msg) msg.textContent = '确定要删除知识 ' + id + '（' + (k.title || '') + '）吗？此操作不可撤销。';
+  if (footer) footer.innerHTML = '<button class="btn" onclick="closeDeleteModal()">取消</button><button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" onclick="confirmDelete()">删除</button>';
+  document.getElementById('deleteModal')?.classList.add('open');
+}
+function confirmDelete() {
+  if (deleting.type === 'exp-permanent') {
+    records = records.filter(r => r.id !== deleting.id);
+    if (!saveData()) return;
+    updateBadges(); applyFilters(); renderTrash();
+    showToast('已彻底删除：' + deleting.id, 'success');
+  } else if (deleting.type === 'trash-clear') {
+    records = records.filter(r => !r.deletedAt);
+    if (!saveData()) return;
+    updateBadges(); renderTrash(); applyFilters();
+    showToast('回收站已清空', 'success');
+  } else if (deleting.type === 'exp') {
+    const r = records.find(x => x.id === deleting.id);
+    if (r) {
+      r.deletedAt = new Date().toISOString();
+      if (!saveData()) return;
+      updateBadges(); applyFilters(); renderTrash();
+      closeDrawer();
+      showToast('已移入回收站', 'success');
+    }
+  } else if (deleting.type === 'kb') {
+    knowledgeBase = knowledgeBase.filter(k => k.id !== deleting.id);
+    if (!saveKBData()) return;
+    applyKBFilters(); updateKBCounts();
+    closeDrawer();
+    showToast('删除成功', 'success');
+  }
+  closeDeleteModal();
+}
+function closeDeleteModal() {
+  document.getElementById('deleteModal')?.classList.remove('open');
+  deleting = { type: null, id: null, permanent: false };
+  const header = document.getElementById('deleteModalHeader');
+  const footer = document.getElementById('deleteModalFooter');
+  if (header) header.textContent = '确认删除';
+  if (footer) footer.innerHTML = '<button class="btn" onclick="closeDeleteModal()">取消</button><button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" onclick="confirmDelete()">确认删除</button>';
+}
+function openDrawer() {
+  hideTooltip();
+  document.getElementById('drawer')?.classList.add('open');
+  document.getElementById('drawerOverlay')?.classList.add('open');
+}
+function closeDrawer() {
+  document.getElementById('drawer')?.classList.remove('open');
+  document.getElementById('drawerOverlay')?.classList.remove('open');
+  editingId = null; kbEditingId = null; drawerMode = 'view';
+}
+
+function openChatModal(mode) {
+  hideTooltip();
+  chatMode = mode || 'experience';
+  chatHistory = [];
+  const modal = document.getElementById('chatModal');
+  if (!modal) return;
+  const sub = document.getElementById('chatHeaderSub');
+  if (sub) sub.textContent = chatMode === 'knowledge' ? '描述你的问题，系统会检索知识库' : '描述你的问题，系统会检索历史案例和知识点';
+  renderChatBody();
+  renderChatQuick();
+  modal.classList.add('open');
+  setTimeout(() => document.getElementById('chatInput')?.focus(), 100);
+}
+function closeChatModal() {
+  document.getElementById('chatModal')?.classList.remove('open');
+}
+function renderChatQuick() {
+  const quick = document.getElementById('chatQuick');
+  if (!quick) return;
+  const samples = chatMode === 'knowledge'
+    ? ['EASA 有哪些局方类别？', 'PW1100G 铭牌怎么识别？', 'SB 等级怎么区分？']
+    : ['V2500 扩散机匣 M 边怎么判断？', '非原台件缺少 NIS 能接受吗？', '试车后漏油怎么处理？', 'CAAC 挂签标 TEST 接受吗？'];
+  quick.innerHTML = samples.map(s =>
+    '<span class="chat-quick-btn" onclick="quickChat(\'' + escapeAttr(s) + '\')">' + escapeHtml(s) + '</span>'
+  ).join('');
+}
+function quickChat(text) {
+  const input = document.getElementById('chatInput');
+  if (input) { input.value = text; submitChatQuery(); }
+}
+function submitChatQuery() {
+  const input = document.getElementById('chatInput');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  chatHistory.push({ role: 'user', text: text });
+  input.value = '';
+  const parsed = parseNaturalQuery(text);
+  const searchText = parsed.text || text;
+  let results = [];
+  if (chatMode === 'knowledge') {
+    results = knowledgeBase
+      .map(k => ({ item: k, score: calcKBRelevance(searchText, k) }))
+      .filter(x => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+  } else {
+    let active = activeRecords();
+    if (parsed.model) active = active.filter(r => r.model === parsed.model || r.model === 'ALL');
+    if (parsed.category) active = active.filter(r => r.category === parsed.category);
+    if (parsed.days) {
+      const threshold = Date.now() - parsed.days * 86400000;
+      active = active.filter(r => new Date(r.updatedAt).getTime() >= threshold);
+    }
+    results = active
+      .map(r => ({ item: r, score: calcExpRelevance(searchText, r) }))
+      .filter(x => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+  }
+  const meta = [];
+  if (parsed.model) meta.push('机型=' + parsed.model);
+  if (parsed.category) meta.push('类别=' + CAT_FULL[parsed.category]);
+  if (parsed.days) meta.push('近 ' + parsed.days + ' 天');
+  chatHistory.push({ role: 'system', text: text, parsed: parsed, meta: meta, results: results });
+  renderChatBody();
+  setTimeout(() => {
+    const body = document.getElementById('chatBody');
+    if (body) body.scrollTop = body.scrollHeight;
+  }, 50);
+}
+function renderChatBody() {
+  const body = document.getElementById('chatBody');
+  if (!body) return;
+  if (chatHistory.length === 0) {
+    body.innerHTML = '<div style="color:var(--text-tertiary);font-size:13px;text-align:center;padding:40px 20px;">' +
+      '💡 描述你遇到的问题，系统会返回匹配的历史案例。<br><br>' +
+      '<span style="font-size:12px;">支持自然语言，例如：<br>' +
+      '· V2500 最近 30 天的 NIS 问题<br>' +
+      '· 试车后漏油怎么处理<br>' +
+      '· CAAC 挂签 TEST 接受吗</span>' +
+      '</div>';
+    return;
+  }
+  const html = chatHistory.map(m => {
+    if (m.role === 'user') {
+      return '<div class="chat-msg user">' +
+        '<div class="chat-bubble">' + escapeHtml(m.text) + '</div>' +
+        '<div class="chat-avatar">你</div>' +
+        '</div>';
+    } else {
+      const metaStr = m.meta && m.meta.length > 0
+        ? '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px;">识别条件：' + escapeHtml(m.meta.join(' · ')) + '</div>'
+        : '';
+      let resultsHtml = '';
+      if (!m.results || m.results.length === 0) {
+        resultsHtml = '<div style="font-size:12px;color:var(--text-tertiary);padding:12px;background:var(--bg);border-radius:6px;">未找到匹配的内容，可尝试换个说法或联系管理员补充</div>';
+      } else {
+        resultsHtml = '<div class="chat-result-list">' + m.results.map(x => {
+          const item = x.item;
+          if (chatMode === 'knowledge') {
+            return '<div class="chat-result-item" onclick="viewKBRecord(\'' + item.id + '\')">' +
+              '<div class="chat-result-head"><span class="chat-result-id">' + escapeHtml(item.id) + '</span>' +
+              '<span class="chat-result-kw">' + escapeHtml(item.title || '') + '</span></div>' +
+              '<div class="chat-result-conclusion">' + escapeHtml(truncate(item.summary || item.content || '', 120)) + '</div>' +
+              '<div class="chat-result-actions">' +
+              '<button class="btn-text" onclick="event.stopPropagation();viewKBRecord(\'' + item.id + '\')">查看全文</button>' +
+              '</div></div>';
+          } else {
+            return '<div class="chat-result-item" onclick="viewRecord(\'' + item.id + '\')">' +
+              '<div class="chat-result-head"><span class="chat-result-id">' + escapeHtml(item.id) + '</span>' +
+              '<span class="chat-result-kw">' + escapeHtml(item.keyword || '') + '</span>' +
+              '<span class="model-badge" style="font-size:10px;margin-left:auto;">' + escapeHtml(item.model || 'ALL') + '</span></div>' +
+              '<div class="chat-result-conclusion">' + escapeHtml(truncate(item.conclusion || '', 120)) + '</div>' +
+              '<div class="chat-result-actions">' +
+              '<button class="btn-text" onclick="event.stopPropagation();viewRecord(\'' + item.id + '\')">查看详情</button>' +
+              '</div></div>';
+          }
+        }).join('') + '</div>';
+      }
+      const reply = m.results && m.results.length > 0
+        ? '找到 <strong>' + m.results.length + '</strong> 条相关内容：'
+        : '未找到匹配内容';
+      return '<div class="chat-msg system">' +
+        '<div class="chat-avatar">AI</div>' +
+        '<div class="chat-bubble">' + metaStr + reply + resultsHtml + '</div>' +
+        '</div>';
+    }
+  }).join('');
+  body.innerHTML = html;
+}
+
+function exportData() {
+  const data = { version: '3.0', exportedAt: new Date().toISOString(), records: records, knowledgeBase: knowledgeBase };
+  const dataStr = JSON.stringify(data, null, 2);
+  const blob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '放行工作储备_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('导出成功（含回收站）', 'success');
+}
+function exportFullHTML() {
+  if (records.length === 0 && knowledgeBase.length === 0) { showToast('没有数据可导出', 'error'); return; }
+  showToast('正在生成完整HTML文件...', 'info');
+  setTimeout(function() {
+    try {
+      const clone = document.documentElement.cloneNode(true);
+      const ct = clone.querySelector('#toastContainer');
+      if (ct) ct.innerHTML = '';
+      ['#drawer', '#drawerOverlay', '#deleteModal', '#importModal', '#conflictModal', '#chatModal'].forEach(sel => {
+        const el = clone.querySelector(sel);
+        if (el) el.classList.remove('open');
+      });
+      const tipEl = clone.querySelector('#rowTooltip');
+      if (tipEl) { tipEl.classList.remove('show'); tipEl.innerHTML = ''; }
+      let html = clone.outerHTML;
+      const recordsStr = JSON.stringify(records, null, 2);
+      const kbStr = JSON.stringify(knowledgeBase, null, 2);
+      const expRe = /\[\/\*@@EXP_START@@\*\/[\s\S]*?\/\*@@EXP_END@@\*\/\]/;
+      const kbRe  = /\[\/\*@@KB_START@@\*\/[\s\S]*?\/\*@@KB_END@@\*\/\]/;
+      if (!expRe.test(html) || !kbRe.test(html)) throw new Error('源文件缺少数据哨兵标记');
+      const expInner = recordsStr.slice(1, -1);
+      const kbInner  = kbStr.slice(1, -1);
+      html = html.replace(expRe, function() { return '[/*@@EXP_START@@*/' + expInner + '/*@@EXP_END@@*/]'; });
+      html = html.replace(kbRe,  function() { return '[/*@@KB_START@@*/'  + kbInner  + '/*@@KB_END@@*/]'; });
+
+      const ts = Date.now();
+      html = html.replace(/const STORAGE_KEY = '[^']*';/,   "const STORAGE_KEY = 'experience_data_v" + ts + "';");
+      html = html.replace(/const KB_STORAGE_KEY = '[^']*';/, "const KB_STORAGE_KEY = 'knowledge_base_v" + ts + "';");
+
+      html = html.replace(/const FALLBACK_EXP_KEYS = \[[^\]]*\];/, 'const FALLBACK_EXP_KEYS = [];');
+      html = html.replace(/const FALLBACK_KB_KEYS = \[[^\]]*\];/,  'const FALLBACK_KB_KEYS = [];');
+
+      if (records.length > 0 && !html.includes('"id": "' + records[0].id + '"')) {
+        throw new Error('数据注入验证失败：第一条经验 ' + records[0].id + ' 未找到');
+      }
+      if (knowledgeBase.length > 0 && !html.includes('"id": "' + knowledgeBase[0].id + '"')) {
+        throw new Error('数据注入验证失败：第一条知识 ' + knowledgeBase[0].id + ' 未找到');
+      }
+
+      const blob = new Blob(['<!DOCTYPE html>\n' + html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '放行工作储备系统_' + new Date().toISOString().slice(0,10) + '.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('完整HTML已导出（含 ' + records.length + ' 条经验 / ' + knowledgeBase.length + ' 条知识）！', 'success');
+    } catch (err) {
+      console.error('导出HTML失败:', err);
+      showToast('导出失败：' + err.message, 'error');
+    }
+  }, 500);
+}
+function showImportModal() {
+  hideTooltip();
+  document.getElementById('importModal')?.classList.add('open');
+  const it = document.getElementById('importText');
+  const fi = document.getElementById('importFile');
+  if (it) it.value = '';
+  if (fi) fi.value = '';
+}
+function closeImportModal() { document.getElementById('importModal')?.classList.remove('open'); }
+function doImport() {
+  const fileInput = document.getElementById('importFile');
+  const textInput = document.getElementById('importText');
+  const textVal = textInput?.value?.trim() || '';
+  if (fileInput && fileInput.files.length > 0) {
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try { processImport(JSON.parse(e.target.result)); }
+      catch (err) { showToast('文件解析失败：' + err.message, 'error'); }
+    };
+    reader.readAsText(file);
+  } else if (textVal) {
+    try { processImport(JSON.parse(textVal)); }
+    catch (err) { showToast('JSON 解析失败：' + err.message, 'error'); }
+  } else {
+    showToast('请选择文件或粘贴 JSON 数据', 'warning');
+  }
+}
+function processImport(data) {
+  let recordData = null, kbData = null;
+  if (Array.isArray(data)) recordData = data;
+  else if (data && typeof data === 'object') {
+    if (Array.isArray(data.records)) recordData = data.records;
+    if (Array.isArray(data.knowledgeBase)) kbData = data.knowledgeBase;
+  }
+  if (!recordData && !kbData) { showToast('导入数据格式不正确', 'error'); return; }
+  let addedExp = 0, updatedExp = 0, addedKB = 0, updatedKB = 0;
+  if (recordData) {
+    recordData.forEach(item => {
+      if (!item.id) return;
+      const existing = records.find(r => r.id === item.id);
+      if (existing) { Object.assign(existing, normalizeRecord(item)); updatedExp++; }
+      else {
+        records.push(normalizeRecord(Object.assign({ categoryName: CAT_FULL[item.category] || item.category }, item)));
+        addedExp++;
+      }
+    });
+    saveData(); updateBadges(); applyFilters(); renderTrash();
+  }
+  if (kbData) {
+    kbData.forEach(item => {
+      if (!item.id) return;
+      const existing = knowledgeBase.find(k => k.id === item.id);
+      if (existing) { Object.assign(existing, item); updatedKB++; }
+      else { knowledgeBase.push(item); addedKB++; }
+    });
+    saveKBData(); applyKBFilters(); updateKBCounts();
+  }
+  closeImportModal();
+  showToast('导入完成：经验库新增 ' + addedExp + '、更新 ' + updatedExp + '；知识库新增 ' + addedKB + '、更新 ' + updatedKB, 'success');
+}
+
+function showToast(msg, type) {
+  type = type || 'info';
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  const icons = { success: '✓', error: '✕', warning: '!', info: 'i' };
+  toast.innerHTML = '<span style="font-weight:bold;">' + (icons[type] || 'i') + '</span><span>' + escapeHtml(msg) + '</span>';
+  container.appendChild(toast);
+  setTimeout(function() {
+    toast.style.animation = 'slideIn 0.3s ease reverse';
+    setTimeout(function() { toast.remove(); }, 300);
+  }, 2500);
+}
+
+function extractTokens(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) return [];
+  const tokens = new Set();
+  const words = q.split(/[\s,，。.、；;：:！!？?\-——_（）()【】\[\]"'""'']+/).filter(w => w.length >= 2);
+  words.forEach(w => tokens.add(w));
+  const clean = q.replace(/[\s,，。.、；;：:！!？?\-——_（）()【】\[\]"'""'']+/g, '');
+  for (let i = 0; i < clean.length - 1; i++) {
+    const gram = clean.substring(i, i + 2);
+    if (/[\u4e00-\u9fa5a-zA-Z0-9]/.test(gram)) tokens.add(gram);
+  }
+  const singleChars = q.match(/[a-zA-Z0-9]+/g) || [];
+  singleChars.forEach(c => { if (c.length >= 2) tokens.add(c.toLowerCase()); });
+  return Array.from(tokens);
+}
+function expandTokens(tokens) {
+  const expanded = new Set(tokens);
+  for (const token of tokens) {
+    const t = token.toLowerCase();
+    if (SYNONYMS[t]) SYNONYMS[t].forEach(s => expanded.add(s.toLowerCase()));
+    for (const key in SYNONYMS) {
+      const syns = SYNONYMS[key];
+      for (const syn of syns) {
+        const synL = syn.toLowerCase();
+        if (synL === t || synL.includes(t) || t.includes(synL)) {
+          expanded.add(key.toLowerCase());
+          break;
+        }
+      }
+    }
+  }
+  return Array.from(expanded);
+}
+function levenshtein(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 99;
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i-1] === b[j-1] ? 0 : 1;
+      dp[i][j] = Math.min(dp[i-1][j] + 1, dp[i][j-1] + 1, dp[i-1][j-1] + cost);
+    }
+  }
+  return dp[m][n];
+}
+function calcTextScore(query, tokens, text) {
+  if (!text) return 0;
+  const t = text.toLowerCase();
+  let score = 0;
+  if (query && t.includes(query.toLowerCase())) score += 50;
+  for (const token of tokens) {
+    if (t.includes(token)) score += token.length >= 3 ? 8 : 4;
+  }
+  if (query && /^[a-z0-9\-]{3,15}$/.test(query)) {
+    const words = t.match(/[a-z0-9\-]+/g) || [];
+    for (const w of words) {
+      if (w === query) continue;
+      if (Math.abs(w.length - query.length) <= 2 && levenshtein(w, query) <= 1) score += 6;
+    }
+  }
+  return score;
+}
+function calcExpRelevance(query, record) {
+  const rawTokens = extractTokens(query);
+  const tokens = expandTokens(rawTokens);
+  if (tokens.length === 0 && !query) return 0;
+  const q = query.toLowerCase().trim();
+  let score = 0;
+  const fields = [
+    { name: 'keyword', weight: 15 }, { name: 'question', weight: 12 }, { name: 'conclusion', weight: 10 },
+    { name: 'basis', weight: 6 }, { name: 'background', weight: 4 }, { name: 'keypoint', weight: 5 },
+    { name: 'remark', weight: 3 }, { name: 'file', weight: 4 }, { name: 'model', weight: 3 }
+  ];
+  for (const f of fields) score += calcTextScore(q, tokens, record[f.name] || '') * f.weight / 10;
+  return score;
+}
+function calcKBRelevance(query, record) {
+  const rawTokens = extractTokens(query);
+  const tokens = expandTokens(rawTokens);
+  if (tokens.length === 0 && !query) return 0;
+  const q = query.toLowerCase().trim();
+  let score = 0;
+  const fields = [
+    { name: 'title', weight: 15 }, { name: 'summary', weight: 10 }, { name: 'content', weight: 8 },
+    { name: 'source', weight: 4 }, { name: 'model', weight: 3 }
+  ];
+  for (const f of fields) score += calcTextScore(q, tokens, record[f.name] || '') * f.weight / 10;
+  return score;
+}
+function highlightText(text, query) {
+  if (!text || !query) return escapeHtml(text || '');
+  let result = escapeHtml(text);
+  const tokens = expandTokens(extractTokens(query));
+  tokens.sort((a, b) => b.length - a.length);
+  for (const token of tokens) {
+    if (token.length < 2) continue;
+    const escaped = escapeHtml(token).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, 'gi');
+    result = result.replace(regex, '<span class="highlight-keyword">$&</span>');
+  }
+  return result;
+}
+function renderSmartJudgmentExp(query, matchedRecords) {
+  const container = document.getElementById('smartJudgmentExp');
+  if (!container) return;
+  if (!query || query.trim().length < 2 || matchedRecords.length === 0) {
+    container.style.display = 'none'; container.innerHTML = ''; return;
+  }
+  try {
+    const top = matchedRecords.slice(0, 3);
+    const maxScore = top[0]._score || 1;
+    let conclusions = '';
+    for (let i = 0; i < top.length; i++) {
+      const r = top[i];
+      const conf = r._score > maxScore * 0.7 ? '高' : (r._score > maxScore * 0.4 ? '中' : '低');
+      conclusions += '<div style="margin-bottom:6px;"><strong>【参考' + (i+1) + '·相关度' + conf + '】</strong>' +
+        escapeHtml(r.keyword || '') + ' — ' + highlightText(r.conclusion || '', query) + '</div>';
+    }
+    const conclusionTexts = top.map(t => t.conclusion).filter(Boolean);
+    let summary = '';
+    if (conclusionTexts.length > 0) {
+      const allSame = conclusionTexts.every(c => c === conclusionTexts[0]);
+      summary = allSame
+        ? '匹配到 ' + top.length + ' 条相似案例，结论一致：<strong>' + highlightText(conclusionTexts[0], query) + '</strong>'
+        : '匹配到 ' + top.length + ' 条相似案例，结论存在差异，建议结合具体场景判断：';
+    }
+    const sourceIds = top.map(t => t.id);
+    container.innerHTML = '<div class="smart-judgment">' +
+      '<div class="smart-judgment-header">' +
+      '<span class="smart-judgment-title">🔍 智能参考判断</span>' +
+      '<span class="smart-judgment-query">输入：' + escapeHtml(query) + '</span>' +
+      '</div>' +
+      '<div class="smart-judgment-body">' +
+      '<div class="smart-judgment-conclusion">' + summary + '</div>' +
+      conclusions +
+      '<div class="smart-judgment-sources">相关案例编号：' + sourceIds.join('、') + '</div>' +
+      '<div class="smart-judgment-disclaimer">* 以上结论基于历史案例匹配，仅供参考。</div>' +
+      '</div></div>';
+    container.style.display = 'block';
+  } catch (e) { container.style.display = 'none'; }
+}
+function renderSmartJudgmentKB(query, matchedRecords) {
+  const container = document.getElementById('smartJudgmentKB');
+  if (!container) return;
+  if (!query || query.trim().length < 2 || matchedRecords.length === 0) {
+    container.style.display = 'none'; container.innerHTML = ''; return;
+  }
+  try {
+    const top = matchedRecords.slice(0, 3);
+    let items = '';
+    for (let i = 0; i < top.length; i++) {
+      const r = top[i];
+      items += '<div style="margin-bottom:6px;"><strong>【知识' + (i+1) + '】</strong>' +
+        highlightText(r.title || '', query) + ' — ' + highlightText(r.summary || '', query) + '</div>';
+    }
+    container.innerHTML = '<div class="smart-judgment">' +
+      '<div class="smart-judgment-header">' +
+      '<span class="smart-judgment-title">📚 知识库智能匹配</span>' +
+      '<span class="smart-judgment-query">输入：' + escapeHtml(query) + '</span>' +
+      '</div>' +
+      '<div class="smart-judgment-body">' +
+      '<div class="smart-judgment-conclusion">匹配到 ' + top.length + ' 条相关知识条目：</div>' +
+      items +
+      '<div class="smart-judgment-disclaimer">* 点击表格中的条目可查看完整内容。</div>' +
+      '</div></div>';
+    container.style.display = 'block';
+  } catch (e) { container.style.display = 'none'; }
+}
+
+function isAuthenticated() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('key') === EDIT_KEY) {
+      sessionStorage.setItem(AUTH_STORAGE_KEY, '1');
+      return true;
+    }
+    return sessionStorage.getItem(AUTH_STORAGE_KEY) === '1';
+  } catch (e) { return false; }
+}
+function applyMode(isEdit) {
+  document.documentElement.setAttribute('data-auth', isEdit ? 'edit' : 'readonly');
+  document.querySelectorAll('.mode-toggle').forEach(t => {
+    t.textContent = isEdit ? '返回查看' : '进入编辑';
+    t.className = 'mode-toggle ' + (isEdit ? 'edit' : 'readonly');
+  });
+  if (!isEdit && currentPanel === 'trash') switchPanel('experience');
+}
+function toggleAccessMode() {
+  if (isAuthenticated()) {
+    if (confirm('确定要退出编辑模式吗？退出后将变为只读模式。')) {
+      try { sessionStorage.removeItem(AUTH_STORAGE_KEY); } catch (e) {}
+      applyMode(false);
+      showToast('已切换为只读模式', 'info');
+    }
+  } else {
+    showAccessModal();
+  }
+}
+function showAccessModal() {
+  const overlay = document.createElement('div');
+  overlay.className = 'access-modal-overlay';
+  overlay.id = 'accessModalOverlay';
+  overlay.innerHTML = '<div class="access-modal" onclick="event.stopPropagation()">' +
+    '<h3>进入编辑模式</h3>' +
+    '<p>请输入编辑密钥以进入编辑模式。普通用户无需输入，可直接查阅和搜索。</p>' +
+    '<div class="access-error" id="accessError"></div>' +
+    '<input type="password" id="accessKeyInput" placeholder="请输入编辑密钥" onkeydown="if(event.key===\'Enter\')submitAccessKey()">' +
+    '<div class="access-modal-btns">' +
+    '<button onclick="closeAccessModal()">取消</button>' +
+    '<button class="primary" onclick="submitAccessKey()">确认</button>' +
+    '</div></div>';
+  overlay.onclick = closeAccessModal;
+  document.body.appendChild(overlay);
+  setTimeout(() => document.getElementById('accessKeyInput')?.focus(), 100);
+}
+function closeAccessModal() {
+  document.getElementById('accessModalOverlay')?.remove();
+}
+function submitAccessKey() {
+  const input = document.getElementById('accessKeyInput');
+  const error = document.getElementById('accessError');
+  if (!input) return;
+  if (input.value === EDIT_KEY) {
+    try { sessionStorage.setItem(AUTH_STORAGE_KEY, '1'); } catch (e) {}
+    closeAccessModal();
+    applyMode(true);
+    showToast('已进入编辑模式', 'success');
+  } else {
+    if (error) error.textContent = '密钥错误，请重试';
+    input.value = '';
+    input.focus();
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    hideTooltip();
+    if (document.getElementById('chatModal')?.classList.contains('open')) { closeChatModal(); return; }
+    if (document.getElementById('conflictModal')?.classList.contains('open')) { cancelConflictSave(); return; }
+    if (document.getElementById('drawer')?.classList.contains('open')) closeDrawer();
+    if (document.getElementById('importModal')?.classList.contains('open')) closeImportModal();
+    if (document.getElementById('deleteModal')?.classList.contains('open')) closeDeleteModal();
+    if (document.getElementById('accessModalOverlay')) closeAccessModal();
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    const input = currentPanel === 'knowledge' ? document.getElementById('kbSearchInput') : document.getElementById('searchInput');
+    input?.focus();
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'n') {
+    e.preventDefault();
+    if (isAuthenticated()) {
+      if (currentPanel === 'knowledge') openAddKB();
+      else if (currentPanel === 'experience') openAddDrawer();
+    }
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'i') {
+    e.preventDefault();
+    openChatModal(currentPanel === 'knowledge' ? 'knowledge' : 'experience');
+    return;
+  }
+  if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'e') {
+    e.preventDefault();
+    toggleAccessMode();
+  }
+});
+
+init();
+</script>
+</body></html>
